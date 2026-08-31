@@ -6,15 +6,21 @@ use std::{
     process,
 };
 
+use crate::{
+    expression::{Binary, Expr, Grouping, Literal, Unary},
+    token::{Token, TokenType},
+};
+
+mod expression;
 mod token;
 
 struct Lox {
-    had_error: bool
+    had_error: bool,
 }
 
 impl Lox {
     pub fn new() -> Self {
-        Lox {had_error: false}
+        Lox { had_error: false }
     }
 
     pub fn main(&mut self, args: &mut Args) {
@@ -62,7 +68,30 @@ impl Lox {
 }
 
 fn main() {
-    let mut args = env::args();
-    let mut lox = Lox::new();
-    lox.main(&mut args);
+    // let mut args = env::args();
+    // let mut lox = Lox::new();
+    // lox.main(&mut args);
+
+    let expr = Expr::Binary(Binary {
+        left: Box::new(Expr::Unary(Unary {
+            operator: Token {
+                token_type: TokenType::Minus,
+                lexeme: "-".to_owned(),
+                line: Some(1),
+                literal: None,
+            },
+            right: Box::new(Expr::Literal(Literal::Int(123))),
+        })),
+        operator: Token {
+            token_type: TokenType::Star,
+            lexeme: "*".to_owned(),
+            line: Some(1),
+            literal: None,
+        },
+        right: Box::new(Expr::Grouping(Grouping {
+            expression: Box::new(Expr::Literal(Literal::Float(45.67))),
+        })),
+    });
+
+    println!("{}", expression::print(&expr));
 }
