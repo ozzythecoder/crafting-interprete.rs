@@ -1,5 +1,3 @@
-use std::fmt::{Display, write};
-
 use crate::token::{Token, TokenType};
 
 /// Defines all expression types, as defined in [the grammar definition](./lox_grammar.txt).
