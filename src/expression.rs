@@ -1,3 +1,5 @@
+use std::fmt::{Display, write};
+
 use crate::token::{Token, TokenType};
 
 /// Defines all expression types, as defined in [the grammar definition](./lox_grammar.txt).
@@ -64,14 +66,26 @@ impl ToString for Literal {
     }
 }
 
+#[derive(Debug)]
 pub struct Value(Literal);
 
-pub struct EvalError {
-    token: Token,
-    message: String,
+impl ToString for Value {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
 }
 
-pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
+#[derive(Debug)]
+pub struct RuntimeError {
+    pub token: Token,
+    pub message: String,
+}
+
+pub fn interpret(expr: Expr) -> Result<Value, RuntimeError> {
+    evaluate(expr)
+}
+
+pub fn evaluate(expr: Expr) -> Result<Value, RuntimeError> {
     match expr {
         Expr::Literal(l) => Ok(Value(l)),
         Expr::Grouping(g) => evaluate(*g.expression),
@@ -83,7 +97,7 @@ pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
                 TokenType::Minus => match right.0 {
                     Literal::Int(int) => Ok(Value(Literal::Int(-1 * int))),
                     Literal::Float(float) => Ok(Value(Literal::Float(-1.0 * float))),
-                    _ => Err(EvalError {
+                    _ => Err(RuntimeError {
                         token: u.operator.clone(),
                         message: "Cannot negate a non-number".to_owned(),
                     }),
@@ -94,7 +108,7 @@ pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
                     Literal::Nil => Ok(Value(Literal::True)),
                     _ => Ok(Value(Literal::False)),
                 },
-                _ => Err(EvalError {
+                _ => Err(RuntimeError {
                     token: u.operator.clone(),
                     message: "Invalid unary operator".to_owned(),
                 }),
@@ -110,7 +124,7 @@ pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
                     (Literal::Int(l), Literal::Int(r)) => Ok(Value(Literal::Int(l - r))),
                     (Literal::Float(l), Literal::Int(r)) => Ok(Value(Literal::Float(l - r as f32))),
                     (Literal::Int(l), Literal::Float(r)) => Ok(Value(Literal::Float(l as f32 - r))),
-                    _ => Err(EvalError {
+                    _ => Err(RuntimeError {
                         token: b.operator.clone(),
                         message: "Invalid subtraction operation".to_owned(),
                     }),
@@ -120,7 +134,7 @@ pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
                     (Literal::Int(l), Literal::Int(r)) => Ok(Value(Literal::Int(l / r))),
                     (Literal::Float(l), Literal::Int(r)) => Ok(Value(Literal::Float(l / r as f32))),
                     (Literal::Int(l), Literal::Float(r)) => Ok(Value(Literal::Float(l as f32 / r))),
-                    _ => Err(EvalError {
+                    _ => Err(RuntimeError {
                         token: b.operator.clone(),
                         message: "Invalid division operation".to_owned(),
                     }),
@@ -130,7 +144,7 @@ pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
                     (Literal::Int(l), Literal::Int(r)) => Ok(Value(Literal::Int(l * r))),
                     (Literal::Float(l), Literal::Int(r)) => Ok(Value(Literal::Float(l * r as f32))),
                     (Literal::Int(l), Literal::Float(r)) => Ok(Value(Literal::Float(l as f32 * r))),
-                    _ => Err(EvalError {
+                    _ => Err(RuntimeError {
                         token: b.operator.clone(),
                         message: "Invalid multiplication operation".to_owned(),
                     }),
@@ -142,7 +156,7 @@ pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
                     (Literal::Int(l), Literal::Float(r)) => Ok(Value(Literal::Float(l as f32 + r))),
                     // string concatenation!
                     (Literal::String(l), Literal::String(r)) => Ok(Value(Literal::String(l + &r))),
-                    _ => Err(EvalError {
+                    _ => Err(RuntimeError {
                         token: b.operator.clone(),
                         message: "Invalid addition operation".to_owned(),
                     }),
@@ -156,7 +170,7 @@ pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
                     (Literal::Int(l), Literal::Float(r)) => {
                         Ok(Value(Literal::Boolean(l as f32 > r)))
                     }
-                    _ => Err(EvalError {
+                    _ => Err(RuntimeError {
                         token: b.operator.clone(),
                         message: "Invalid comparison".to_owned(),
                     }),
@@ -170,7 +184,7 @@ pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
                     (Literal::Int(l), Literal::Float(r)) => {
                         Ok(Value(Literal::Boolean(l as f32 >= r)))
                     }
-                    _ => Err(EvalError {
+                    _ => Err(RuntimeError {
                         token: b.operator.clone(),
                         message: "Invalid comparison".to_owned(),
                     }),
@@ -184,7 +198,7 @@ pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
                     (Literal::Int(l), Literal::Float(r)) => {
                         Ok(Value(Literal::Boolean((l as f32) < r)))
                     }
-                    _ => Err(EvalError {
+                    _ => Err(RuntimeError {
                         token: b.operator.clone(),
                         message: "Invalid comparison".to_owned(),
                     }),
@@ -198,14 +212,14 @@ pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
                     (Literal::Int(l), Literal::Float(r)) => {
                         Ok(Value(Literal::Boolean(l as f32 <= r)))
                     }
-                    _ => Err(EvalError {
+                    _ => Err(RuntimeError {
                         token: b.operator.clone(),
                         message: "Invalid comparison".to_owned(),
                     }),
                 },
                 TokenType::BangEqual => Ok(Value(Literal::Boolean(left.0 != right.0))),
                 TokenType::EqualEqual => Ok(Value(Literal::Boolean(left.0 == right.0))),
-                _ => Err(EvalError {
+                _ => Err(RuntimeError {
                     token: b.operator.clone(),
                     message: "Invalid binary operation".to_owned(),
                 }),
