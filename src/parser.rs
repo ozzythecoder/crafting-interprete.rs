@@ -9,8 +9,8 @@ pub struct Parser {
 }
 
 pub struct ParseError {
-    token: Token,
-    message: String,
+    pub token: Token,
+    pub message: String,
 }
 
 impl Parser {
@@ -18,14 +18,8 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Option<Expr> {
-        match self.expression() {
-            Ok(exp) => Some(exp),
-            Err(e) => {
-                // self.synchronize
-                None
-            }
-        }
+    pub fn parse(&mut self) -> Result<Expr, ParseError> {
+        self.expression()
     }
 
     fn expression(&mut self) -> Result<Expr, ParseError> {
