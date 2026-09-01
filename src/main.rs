@@ -47,7 +47,15 @@ impl Lox {
 
     fn run_file(&mut self, path: String) {
         match fs::read(PathBuf::from(&path)) {
-            Ok(bytes) => self.run(bytes),
+            Ok(bytes) => {
+                self.run(bytes);
+                if self.had_error {
+                    process::exit(65);
+                }
+                if self.had_runtime_error {
+                    process::exit(70);
+                }
+            }
             Err(e) => {
                 println!("Error occurred when reading file at {}", &path);
                 println!("{:?}", e);
