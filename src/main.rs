@@ -6,12 +6,7 @@ use std::{
     process,
 };
 
-use crate::{
-    expression::{Binary, Expr, Grouping, Literal, Unary},
-    parser::Parser,
-    scanner::Scanner,
-    token::{Token, TokenType},
-};
+use crate::{expression::Expr, parser::Parser, scanner::Scanner, token::Token};
 
 mod expression;
 mod parser;
@@ -81,37 +76,14 @@ fn main() {
 }
 
 fn print_ast() {
-    let expr = Expr::Binary(Binary {
-        left: Box::new(Expr::Unary(Unary {
-            operator: Token {
-                token_type: TokenType::Minus,
-                lexeme: "-".to_owned(),
-                line: Some(1),
-                literal: None,
-            },
-            right: Box::new(Expr::Literal(Literal::Int(123))),
-        })),
-        operator: Token {
-            token_type: TokenType::Star,
-            lexeme: "*".to_owned(),
-            line: Some(1),
-            literal: None,
-        },
-        right: Box::new(Expr::Grouping(Grouping {
-            expression: Box::new(Expr::Literal(Literal::Float(45.67))),
-        })),
-    });
-
-    let source = String::from("(1 + 2) * 3");
-    let mut scanner = Scanner::new(source);
+    let source = "( 210 * 4 ) / 2";
+    let mut scanner = Scanner::new(source.to_owned());
     let tokens = scanner.scan_tokens();
     let mut parser = Parser::new(tokens);
-    match parser.parse() {
-        Some(ast) => {
-            println!("{:#?}", ast);
-        }
-        None => {
-            println!("Parser returned None.");
-        }
-    };
+
+    if let Some(ast) = parser.parse() {
+        println!("{:#?}", ast);
+    } else {
+        println!("Parser returned None.");
+    }
 }
