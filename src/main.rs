@@ -1,5 +1,5 @@
 use std::{
-    env::{self, Args},
+    env::Args,
     fs,
     io::{self, Read},
     path::PathBuf,
@@ -8,19 +8,28 @@ use std::{
 
 use crate::{
     expression::{Binary, Expr, Grouping, Literal, Unary},
+    parser::Parser,
+    scanner::Scanner,
     token::{Token, TokenType},
 };
 
 mod expression;
+mod parser;
+mod scanner;
 mod token;
 
 struct Lox {
     had_error: bool,
+    expr: Option<Expr>,
 }
 
 impl Lox {
-    pub fn new() -> Self {
-        Lox { had_error: false }
+    pub fn new(tokens: Vec<Token>) -> Self {
+        let mut parser = Parser::new(tokens);
+        Lox {
+            had_error: false,
+            expr: parser.parse(),
+        }
     }
 
     pub fn main(&mut self, args: &mut Args) {
@@ -68,10 +77,10 @@ impl Lox {
 }
 
 fn main() {
-    // let mut args = env::args();
-    // let mut lox = Lox::new();
-    // lox.main(&mut args);
+    print_ast();
+}
 
+fn print_ast() {
     let expr = Expr::Binary(Binary {
         left: Box::new(Expr::Unary(Unary {
             operator: Token {
@@ -93,5 +102,16 @@ fn main() {
         })),
     });
 
-    println!("{}", expression::print(&expr));
+    let source = String::from("(1 + 2) * 3");
+    let mut scanner = Scanner::new(source);
+    let tokens = scanner.scan_tokens();
+    let mut parser = Parser::new(tokens);
+    match parser.parse() {
+        Some(ast) => {
+            println!("{:#?}", ast);
+        }
+        None => {
+            println!("Parser returned None.");
+        }
+    };
 }
