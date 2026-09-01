@@ -1,6 +1,6 @@
 use std::{env::Args, fs, io::{BufRead, Write}, path::PathBuf, process};
 
-use crate::{expression::{RuntimeError, interpret}, parser::Parser, scanner::Scanner};
+use crate::{interpreter::{RuntimeError, interpret}, parser::Parser, scanner::Scanner};
 
 
 pub struct Lox {

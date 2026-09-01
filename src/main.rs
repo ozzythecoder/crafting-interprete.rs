@@ -1,6 +1,7 @@
 use crate::runtime::Lox;
 use std::env;
 
+mod interpreter;
 mod expression;
 mod parser;
 mod runtime;
