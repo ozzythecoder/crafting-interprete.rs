@@ -1,4 +1,4 @@
-use crate::token::Token;
+use crate::token::{Token, TokenType};
 
 /// Defines all expression types, as defined in [the grammar definition](./lox_grammar.txt).
 #[derive(Debug, Clone)]
@@ -38,6 +38,7 @@ pub enum Literal {
     String(String),
     Int(i32),
     Float(f32),
+    Boolean(bool),
     True,
     False,
     Nil,
@@ -49,9 +50,166 @@ impl ToString for Literal {
             Literal::String(s) => s.clone(),
             Literal::Int(i) => i.to_string(),
             Literal::Float(f) => f.to_string(),
+            Literal::Boolean(b) => {
+                if *b {
+                    "true".to_owned()
+                } else {
+                    "false".to_owned()
+                }
+            }
             Literal::True => "true".to_owned(),
             Literal::False => "false".to_owned(),
             Literal::Nil => "nil".to_owned(),
+        }
+    }
+}
+
+pub struct Value(Literal);
+
+pub struct EvalError {
+    token: Token,
+    message: String,
+}
+
+pub fn evaluate(expr: Expr) -> Result<Value, EvalError> {
+    match expr {
+        Expr::Literal(l) => Ok(Value(l)),
+        Expr::Grouping(g) => evaluate(*g.expression),
+        Expr::Unary(u) => {
+            let right = evaluate(*u.right)?;
+
+            match u.operator.token_type {
+                // (-1)
+                TokenType::Minus => match right.0 {
+                    Literal::Int(int) => Ok(Value(Literal::Int(-1 * int))),
+                    Literal::Float(float) => Ok(Value(Literal::Float(-1.0 * float))),
+                    _ => Err(EvalError {
+                        token: u.operator.clone(),
+                        message: "Cannot negate a non-number".to_owned(),
+                    }),
+                },
+                // (!false)
+                TokenType::Bang => match right.0 {
+                    Literal::False => Ok(Value(Literal::True)),
+                    Literal::Nil => Ok(Value(Literal::True)),
+                    _ => Ok(Value(Literal::False)),
+                },
+                _ => Err(EvalError {
+                    token: u.operator.clone(),
+                    message: "Invalid unary operator".to_owned(),
+                }),
+            }
+        }
+        Expr::Binary(b) => {
+            let left = evaluate(*b.left)?;
+            let right = evaluate(*b.right)?;
+
+            match b.operator.token_type {
+                TokenType::Minus => match (left.0, right.0) {
+                    (Literal::Float(l), Literal::Float(r)) => Ok(Value(Literal::Float(l - r))),
+                    (Literal::Int(l), Literal::Int(r)) => Ok(Value(Literal::Int(l - r))),
+                    (Literal::Float(l), Literal::Int(r)) => Ok(Value(Literal::Float(l - r as f32))),
+                    (Literal::Int(l), Literal::Float(r)) => Ok(Value(Literal::Float(l as f32 - r))),
+                    _ => Err(EvalError {
+                        token: b.operator.clone(),
+                        message: "Invalid subtraction operation".to_owned(),
+                    }),
+                },
+                TokenType::Slash => match (left.0, right.0) {
+                    (Literal::Float(l), Literal::Float(r)) => Ok(Value(Literal::Float(l / r))),
+                    (Literal::Int(l), Literal::Int(r)) => Ok(Value(Literal::Int(l / r))),
+                    (Literal::Float(l), Literal::Int(r)) => Ok(Value(Literal::Float(l / r as f32))),
+                    (Literal::Int(l), Literal::Float(r)) => Ok(Value(Literal::Float(l as f32 / r))),
+                    _ => Err(EvalError {
+                        token: b.operator.clone(),
+                        message: "Invalid division operation".to_owned(),
+                    }),
+                },
+                TokenType::Star => match (left.0, right.0) {
+                    (Literal::Float(l), Literal::Float(r)) => Ok(Value(Literal::Float(l * r))),
+                    (Literal::Int(l), Literal::Int(r)) => Ok(Value(Literal::Int(l * r))),
+                    (Literal::Float(l), Literal::Int(r)) => Ok(Value(Literal::Float(l * r as f32))),
+                    (Literal::Int(l), Literal::Float(r)) => Ok(Value(Literal::Float(l as f32 * r))),
+                    _ => Err(EvalError {
+                        token: b.operator.clone(),
+                        message: "Invalid multiplication operation".to_owned(),
+                    }),
+                },
+                TokenType::Plus => match (left.0, right.0) {
+                    (Literal::Float(l), Literal::Float(r)) => Ok(Value(Literal::Float(l + r))),
+                    (Literal::Int(l), Literal::Int(r)) => Ok(Value(Literal::Int(l + r))),
+                    (Literal::Float(l), Literal::Int(r)) => Ok(Value(Literal::Float(l + r as f32))),
+                    (Literal::Int(l), Literal::Float(r)) => Ok(Value(Literal::Float(l as f32 + r))),
+                    // string concatenation!
+                    (Literal::String(l), Literal::String(r)) => Ok(Value(Literal::String(l + &r))),
+                    _ => Err(EvalError {
+                        token: b.operator.clone(),
+                        message: "Invalid addition operation".to_owned(),
+                    }),
+                },
+                TokenType::Greater => match (left.0, right.0) {
+                    (Literal::Float(l), Literal::Float(r)) => Ok(Value(Literal::Boolean(l > r))),
+                    (Literal::Int(l), Literal::Int(r)) => Ok(Value(Literal::Boolean(l > r))),
+                    (Literal::Float(l), Literal::Int(r)) => {
+                        Ok(Value(Literal::Boolean(l > r as f32)))
+                    }
+                    (Literal::Int(l), Literal::Float(r)) => {
+                        Ok(Value(Literal::Boolean(l as f32 > r)))
+                    }
+                    _ => Err(EvalError {
+                        token: b.operator.clone(),
+                        message: "Invalid comparison".to_owned(),
+                    }),
+                },
+                TokenType::GreaterEqual => match (left.0, right.0) {
+                    (Literal::Float(l), Literal::Float(r)) => Ok(Value(Literal::Boolean(l >= r))),
+                    (Literal::Int(l), Literal::Int(r)) => Ok(Value(Literal::Boolean(l >= r))),
+                    (Literal::Float(l), Literal::Int(r)) => {
+                        Ok(Value(Literal::Boolean(l >= r as f32)))
+                    }
+                    (Literal::Int(l), Literal::Float(r)) => {
+                        Ok(Value(Literal::Boolean(l as f32 >= r)))
+                    }
+                    _ => Err(EvalError {
+                        token: b.operator.clone(),
+                        message: "Invalid comparison".to_owned(),
+                    }),
+                },
+                TokenType::Less => match (left.0, right.0) {
+                    (Literal::Float(l), Literal::Float(r)) => Ok(Value(Literal::Boolean(l < r))),
+                    (Literal::Int(l), Literal::Int(r)) => Ok(Value(Literal::Boolean(l < r))),
+                    (Literal::Float(l), Literal::Int(r)) => {
+                        Ok(Value(Literal::Boolean(l < r as f32)))
+                    }
+                    (Literal::Int(l), Literal::Float(r)) => {
+                        Ok(Value(Literal::Boolean((l as f32) < r)))
+                    }
+                    _ => Err(EvalError {
+                        token: b.operator.clone(),
+                        message: "Invalid comparison".to_owned(),
+                    }),
+                },
+                TokenType::LessEqual => match (left.0, right.0) {
+                    (Literal::Float(l), Literal::Float(r)) => Ok(Value(Literal::Boolean(l <= r))),
+                    (Literal::Int(l), Literal::Int(r)) => Ok(Value(Literal::Boolean(l <= r))),
+                    (Literal::Float(l), Literal::Int(r)) => {
+                        Ok(Value(Literal::Boolean(l <= r as f32)))
+                    }
+                    (Literal::Int(l), Literal::Float(r)) => {
+                        Ok(Value(Literal::Boolean(l as f32 <= r)))
+                    }
+                    _ => Err(EvalError {
+                        token: b.operator.clone(),
+                        message: "Invalid comparison".to_owned(),
+                    }),
+                },
+                TokenType::BangEqual => Ok(Value(Literal::Boolean(left.0 != right.0))),
+                TokenType::EqualEqual => Ok(Value(Literal::Boolean(left.0 == right.0))),
+                _ => Err(EvalError {
+                    token: b.operator.clone(),
+                    message: "Invalid binary operation".to_owned(),
+                }),
+            }
         }
     }
 }
@@ -67,6 +225,7 @@ pub fn print(expr: &Expr) -> String {
     }
 }
 
+/// Surround one or more expressions in parentheses.
 fn parenthesize(lexeme: &str, exprs: &[Box<Expr>]) -> String {
     let mut statement = String::from("(");
     statement.push_str(lexeme);
