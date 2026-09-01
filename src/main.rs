@@ -1,12 +1,17 @@
 use std::{
-    env::Args,
+    env::{self, Args},
     fs,
-    io::{self, Read},
+    io::{self, BufRead, Read, Write},
     path::PathBuf,
     process,
 };
 
-use crate::{expression::Expr, parser::Parser, scanner::Scanner, token::Token};
+use crate::{
+    expression::{Expr, RuntimeError, evaluate, interpret},
+    parser::Parser,
+    scanner::Scanner,
+    token::Token,
+};
 
 mod expression;
 mod parser;
@@ -15,23 +20,24 @@ mod token;
 
 struct Lox {
     had_error: bool,
-    expr: Option<Expr>,
+    had_runtime_error: bool,
 }
 
 impl Lox {
-    pub fn new(tokens: Vec<Token>) -> Self {
-        let mut parser = Parser::new(tokens);
+    pub fn new() -> Self {
         Lox {
             had_error: false,
-            expr: parser.parse(),
+            had_runtime_error: false,
         }
     }
 
     pub fn main(&mut self, args: &mut Args) {
-        if args.len() > 1 {
-            println!("Usage: jlox [script");
+        dbg!(&args);
+        if args.len() > 2 {
+            println!("Usage: jlox [script]");
             process::exit(64);
         } else {
+            args.next(); // discard first arg, which is the project filename
             match args.next() {
                 Some(path) => self.run_file(path),
                 None => self.run_prompt(),
@@ -51,16 +57,26 @@ impl Lox {
     }
 
     fn run_prompt(&mut self) {
+        let stdin = io::stdin();
         loop {
-            let mut input = Vec::<u8>::new();
-            match io::stdin().read(&mut input) {
-                Ok(_) => self.run(input),
+            print!("> ");
+            io::stdout().flush().unwrap();
+
+            let mut line = String::new();
+            match stdin.lock().read_line(&mut line) {
+                Ok(0) => {
+                    process::exit(0);
+                }
+                Ok(_) => {
+                    self.run(line.into_bytes());
+                    self.had_error = false;
+                }
                 Err(_) => self.error(format!("Error: could not read stdin"), None),
-            }
+            };
         }
     }
 
-    fn error(&mut self, msg: String, line: Option<u8>) {
+    fn error(&mut self, msg: String, line: Option<usize>) {
         println!("{}", msg);
         if let Some(l) = line {
             println!("\tOccurred on line {}", l);
@@ -68,11 +84,46 @@ impl Lox {
         self.had_error = true;
     }
 
-    fn run(&mut self, bytes: Vec<u8>) {}
+    fn runtime_error(&mut self, error: RuntimeError) {
+        if let Some(line) = error.token.line {
+            println!("[{line}] Runtime Error:, {}", error.message);
+        } else {
+            println!("Runtime Error:, {}", error.message);
+        }
+        self.had_runtime_error = true;
+    }
+
+    fn run(&mut self, bytes: Vec<u8>) {
+        let source = match String::from_utf8(bytes) {
+            Ok(src) => src,
+            Err(e) => {
+                self.had_error = true;
+                println!("Invalid UTF-8: {e}");
+                return;
+            }
+        };
+        let tokens = Scanner::new(source).scan_tokens();
+        let ast = match Parser::new(tokens).parse() {
+            Some(tree) => tree,
+            None => {
+                self.error("Error in parser".to_owned(), None);
+                return;
+            }
+        };
+        match interpret(ast) {
+            Ok(result) => {
+                println!("{:?}", result);
+            }
+            Err(e) => {
+                self.runtime_error(e);
+            }
+        };
+    }
 }
 
 fn main() {
-    print_ast();
+    let mut args = env::args();
+    Lox::new().main(&mut args);
 }
 
 fn print_ast() {
