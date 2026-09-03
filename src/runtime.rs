@@ -1,6 +1,6 @@
 use std::{env::Args, fs, io::{BufRead, Write}, path::PathBuf, process};
 
-use crate::{interpreter::{RuntimeError, interpret}, parser::Parser, scanner::Scanner};
+use crate::{interpreter::{RuntimeError, Interpreter}, parser::Parser, scanner::Scanner};
 
 
 pub struct Lox {
@@ -107,10 +107,8 @@ impl Lox {
                 return;
             }
         };
-        match interpret(ast) {
-            Ok(result) => {
-                println!("{:?}", result);
-            }
+        match Interpreter::new(ast).interpret() {
+            Ok(_) => (),
             Err(e) => {
                 self.runtime_error(e);
             }
