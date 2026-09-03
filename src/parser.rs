@@ -1,10 +1,12 @@
 use crate::{
     expression::{Binary, Expr, Grouping, Literal, Unary},
+    statement::Stmt,
     token::{Token, TokenType},
 };
 
 pub struct Parser {
     tokens: Vec<Token>,
+    statements: Vec<Stmt>,
     current: usize,
 }
 
@@ -30,6 +32,26 @@ impl Parser {
             }
         };
         Ok(self.statements.clone())
+    }
+
+    fn statement(&mut self) -> Result<Stmt, ParseError> {
+        if self.match_expr(&[TokenType::Print]) {
+            self.print_statement()
+        } else {
+            self.expression_statement()
+        }
+    }
+
+    fn print_statement(&mut self)-> Result<Stmt, ParseError> {
+        let value = self.expression()?;
+        self.consume(TokenType::SemiColon, "Expect ';' after value.");
+        Ok(Stmt::Print(value))
+    }
+
+    fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
+        let expr = self.expression()?;
+        self.consume(TokenType::SemiColon, "Expect ';' after expression.");
+        Ok(Stmt::Expression(expr))
     }
 
     fn expression(&mut self) -> Result<Expr, ParseError> {
