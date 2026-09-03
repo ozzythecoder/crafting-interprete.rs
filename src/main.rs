@@ -6,6 +6,7 @@ mod expression;
 mod parser;
 mod runtime;
 mod scanner;
+mod statement;
 mod token;
 
 fn main() {
