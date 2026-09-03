@@ -10,6 +10,7 @@ pub struct Parser {
     current: usize,
 }
 
+#[derive(Debug)]
 pub struct ParseError {
     pub token: Token,
     pub message: String,
@@ -25,9 +26,11 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Result<Vec<Stmt>, ParseError> {
-        while self.is_at_end() {
+        while !self.is_at_end() {
             match self.statement() {
-                Ok(s) => self.statements.push(s),
+                Ok(s) => {
+                    self.statements.push(s);
+                },
                 Err(e) => return Err(e),
             }
         };
@@ -44,13 +47,14 @@ impl Parser {
 
     fn print_statement(&mut self)-> Result<Stmt, ParseError> {
         let value = self.expression()?;
-        self.consume(TokenType::SemiColon, "Expect ';' after value.");
+        let _ = self.consume(TokenType::SemiColon, "Expect ';' after value.");
         Ok(Stmt::Print(value))
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
-        self.consume(TokenType::SemiColon, "Expect ';' after expression.");
+        let _ = self.consume(TokenType::SemiColon, "Expect ';' after expression.");
+        dbg!(&expr);
         Ok(Stmt::Expression(expr))
     }
 
