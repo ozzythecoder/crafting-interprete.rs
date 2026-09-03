@@ -25,16 +25,38 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParseError> {
+    pub fn parse(&mut self) -> Vec<Stmt> {
         while !self.is_at_end() {
-            match self.statement() {
-                Ok(s) => {
-                    self.statements.push(s);
-                },
-                Err(e) => return Err(e),
+            match self.declaration() {
+                Ok(s) => self.statements.push(s),
+                Err(e) => {
+                    self.parse_error(e);
+                }
             }
+        }
+        self.statements.clone()
+    }
+
+    fn declaration(&mut self) -> Result<Stmt, ParseError> {
+        if self.match_expr(&[TokenType::Var]) {
+            self.var_declaration()
+        } else {
+            self.statement()
+        }
+    }
+
+    fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
+        let name = self.consume(TokenType::Var, "Expected variable name.")?;
+        let initializer = if self.match_expr(&[TokenType::Equal]) {
+            Some(self.expression()?)
+        } else {
+            None
         };
-        Ok(self.statements.clone())
+        let _ = self.consume(
+            TokenType::SemiColon,
+            "Expected ';' after variable declaration.",
+        )?;
+        Ok(Stmt::Var { name, initializer })
     }
 
     fn statement(&mut self) -> Result<Stmt, ParseError> {
@@ -45,7 +67,7 @@ impl Parser {
         }
     }
 
-    fn print_statement(&mut self)-> Result<Stmt, ParseError> {
+    fn print_statement(&mut self) -> Result<Stmt, ParseError> {
         let value = self.expression()?;
         let _ = self.consume(TokenType::SemiColon, "Expect ';' after value.")?;
         Ok(Stmt::Print(value))
@@ -157,6 +179,8 @@ impl Parser {
             Ok(Expr::Grouping(Grouping {
                 expression: Box::new(expr),
             }))
+        } else if self.match_expr(&[TokenType::Identifier]) {
+            Ok(Expr::Variable(self.previous()))
         } else {
             // Exhausted all options for valid syntax - report an error
             let message = String::from("Expression expected.");
@@ -164,6 +188,14 @@ impl Parser {
                 token: self.peek().clone(),
                 message,
             })
+        }
+    }
+
+    fn parse_error(&mut self, e: ParseError) {
+        if let Some(line) = e.token.line {
+            println!("[{line}]: Parse Error - {}", e.message);
+        } else {
+            println!("Parse Error - {}", e.message);
         }
     }
 
