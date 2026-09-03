@@ -47,14 +47,13 @@ impl Parser {
 
     fn print_statement(&mut self)-> Result<Stmt, ParseError> {
         let value = self.expression()?;
-        let _ = self.consume(TokenType::SemiColon, "Expect ';' after value.");
+        let _ = self.consume(TokenType::SemiColon, "Expect ';' after value.")?;
         Ok(Stmt::Print(value))
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
-        let _ = self.consume(TokenType::SemiColon, "Expect ';' after expression.");
-        dbg!(&expr);
+        let _ = self.consume(TokenType::SemiColon, "Expect ';' after expression.")?;
         Ok(Stmt::Expression(expr))
     }
 
