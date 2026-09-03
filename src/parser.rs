@@ -15,11 +15,21 @@ pub struct ParseError {
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Parser { tokens, current: 0 }
+        Parser {
+            tokens,
+            statements: vec![],
+            current: 0,
+        }
     }
 
-    pub fn parse(&mut self) -> Result<Expr, ParseError> {
-        self.expression()
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        while self.is_at_end() {
+            match self.statement() {
+                Ok(s) => self.statements.push(s),
+                Err(e) => return Err(e),
+            }
+        };
+        Ok(self.statements.clone())
     }
 
     fn expression(&mut self) -> Result<Expr, ParseError> {
