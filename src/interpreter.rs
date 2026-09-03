@@ -24,13 +24,24 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
-    pub fn interpret(&mut self, statements: Vec<Stmt>) -> Result<Value, RuntimeError> {
-        for stmt in statements {
-            self.evaluate(stmt)
-        }
+    pub fn new(statements: Vec<Stmt>) -> Self {
+        Interpreter { statements }
     }
 
-    fn evaluate(&mut self, stmt: Stmt) -> Option<Result<Value, RuntimeError>> {
+    pub fn interpret(&mut self) -> Result<(), RuntimeError> {
+        for stmt in &self.statements {
+            match self.evaluate(&stmt) {
+                Some(r) => match r {
+                    Ok(_) => continue,
+                    Err(e) => return Err(e),
+                },
+                None => continue
+            };
+        };
+        Ok(())
+    }
+
+    fn evaluate(&self, stmt: &Stmt) -> Option<Result<Value, RuntimeError>> {
         match stmt {
             Stmt::Expression(e) => Some(self.evaluate_expression(e)),
             Stmt::Print(p) => match self.evaluate_expression(p) {
@@ -43,12 +54,12 @@ impl Interpreter {
         }
     }
 
-    fn evaluate_expression(&self, expr: Expr) -> Result<Value, RuntimeError> {
+    fn evaluate_expression(&self, expr: &Expr) -> Result<Value, RuntimeError> {
         match expr {
-            Expr::Literal(l) => Ok(Value(l)),
-            Expr::Grouping(g) => self.evaluate_expression(*g.expression),
+            Expr::Literal(l) => Ok(Value(l.clone())),
+            Expr::Grouping(g) => self.evaluate_expression(&g.expression),
             Expr::Unary(u) => {
-                let right = self.evaluate_expression(*u.right)?;
+                let right = self.evaluate_expression(&u.right)?;
 
                 match u.operator.token_type {
                     // (-1)
@@ -73,8 +84,8 @@ impl Interpreter {
                 }
             }
             Expr::Binary(b) => {
-                let left = self.evaluate_expression(*b.left)?;
-                let right = self.evaluate_expression(*b.right)?;
+                let left = self.evaluate_expression(&b.left)?;
+                let right = self.evaluate_expression(&b.right)?;
 
                 match b.operator.token_type {
                     TokenType::Minus => match (left.0, right.0) {
