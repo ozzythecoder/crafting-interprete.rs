@@ -1,4 +1,5 @@
 use crate::{
+    environment::Environment,
     expression::{Expr, Literal},
     statement::Stmt,
     token::{Token, TokenType},
@@ -20,28 +21,30 @@ pub struct RuntimeError {
 }
 
 pub struct Interpreter {
-    statements: Vec<Stmt>,
+    environment: Environment,
 }
 
 impl Interpreter {
-    pub fn new(statements: Vec<Stmt>) -> Self {
-        Interpreter { statements }
+    pub fn new() -> Self {
+        Interpreter {
+            environment: Environment::new(),
+        }
     }
 
-    pub fn interpret(&mut self) -> Result<(), RuntimeError> {
-        for stmt in &self.statements {
+    pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
+        for stmt in statements {
             match self.evaluate(&stmt) {
                 Some(r) => match r {
                     Ok(_) => continue,
                     Err(e) => return Err(e),
                 },
-                None => continue
+                None => continue,
             };
-        };
+        }
         Ok(())
     }
 
-    fn evaluate(&self, stmt: &Stmt) -> Option<Result<Value, RuntimeError>> {
+    fn evaluate(&mut self, stmt: &Stmt) -> Option<Result<Value, RuntimeError>> {
         match stmt {
             Stmt::Expression(e) => Some(self.evaluate_expression(e)),
             Stmt::Print(p) => match self.evaluate_expression(p) {
@@ -51,18 +54,33 @@ impl Interpreter {
                 }
                 Err(e) => Some(Err(e)),
             },
+            Stmt::Var { name, initializer } => match initializer {
+                Some(init) => match self.evaluate_expression(init) {
+                    Ok(val) => {
+                        self.environment.define(name, val.0);
+                        None
+                    }
+                    Err(e) => Some(Err(e)),
+                },
+                None => {
+                    self.environment.define(name, Literal::Nil);
+                    None
+                }
+            },
         }
     }
 
-    fn evaluate_expression(&self, expr: &Expr) -> Result<Value, RuntimeError> {
+    fn evaluate_expression(&mut self, expr: &Expr) -> Result<Value, RuntimeError> {
         match expr {
             Expr::Literal(l) => Ok(Value(l.clone())),
             Expr::Grouping(g) => self.evaluate_expression(&g.expression),
+            Expr::Variable(v) => Ok(Value(self.environment.get(v)?.clone())),
+            Expr::Assignment(a) => {}
             Expr::Unary(u) => {
                 let right = self.evaluate_expression(&u.right)?;
 
                 match u.operator.token_type {
-                    // (-1)
+                    // e.g. (-1)
                     TokenType::Minus => match right.0 {
                         Literal::Int(int) => Ok(Value(Literal::Int(-1 * int))),
                         Literal::Float(float) => Ok(Value(Literal::Float(-1.0 * float))),
@@ -71,7 +89,7 @@ impl Interpreter {
                             message: "Cannot negate a non-number".to_owned(),
                         }),
                     },
-                    // (!false)
+                    // e.g. (!false), (-val)
                     TokenType::Bang => match right.0 {
                         Literal::False => Ok(Value(Literal::True)),
                         Literal::Nil => Ok(Value(Literal::True)),
