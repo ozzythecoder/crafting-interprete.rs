@@ -38,7 +38,7 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Result<Stmt, ParseError> {
-        if self.match_expr(&[TokenType::Var]) {
+        if self.check(TokenType::Var) {
             self.var_declaration()
         } else {
             self.statement()
@@ -46,7 +46,8 @@ impl Parser {
     }
 
     fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
-        let name = self.consume(TokenType::Var, "Expected variable name.")?;
+        self.advance(); // consume `var` keyword
+        let name = self.consume(TokenType::Identifier, "Expected variable name.")?;
         let initializer = if self.match_expr(&[TokenType::Equal]) {
             Some(self.expression()?)
         } else {
