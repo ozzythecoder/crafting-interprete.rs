@@ -1,5 +1,5 @@
 use crate::{
-    expression::{Binary, Expr, Grouping, Literal, Unary},
+    expression::{Assignment, Binary, Expr, Grouping, Literal, Unary},
     statement::Stmt,
     token::{Token, TokenType},
 };
@@ -278,6 +278,14 @@ impl Parser {
 
     /// Returns the last consumed token.
     fn previous(&self) -> Token {
-        self.tokens[self.current - 1].clone()
+        if self.current > 0 {
+            self.tokens[self.current - 1].clone()
+        } else {
+            println!("Warning: Parser checked `self.previous()` from index 0");
+            self.tokens[0].clone()
+        }
+    }
+}
+
     }
 }
