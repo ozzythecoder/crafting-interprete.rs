@@ -219,9 +219,9 @@ impl Parser {
 
     fn parse_error(&mut self, e: ParseError) {
         if let Some(line) = e.token.line {
-            println!("[{line}]: Parse Error - {}", e.message);
+            println!("[{line}] Parse Error: {}", e.message);
         } else {
-            println!("Parse Error - {}", e.message);
+            println!("Parse Error: {}", e.message);
         }
     }
 
