@@ -75,7 +75,14 @@ impl Interpreter {
             Expr::Literal(l) => Ok(Value(l.clone())),
             Expr::Grouping(g) => self.evaluate_expression(&g.expression),
             Expr::Variable(v) => Ok(Value(self.environment.get(v)?.clone())),
-            Expr::Assignment(a) => {}
+            Expr::Assignment(a) => {
+                let val = self.evaluate_expression(&a.value)?;
+                if let Err(e) = self.environment.assign(&a.name, &val.0) {
+                    Err(e)
+                } else {
+                    Ok(val)
+                }
+            }
             Expr::Unary(u) => {
                 let right = self.evaluate_expression(&u.right)?;
 
