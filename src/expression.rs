@@ -1,17 +1,25 @@
-use crate::token::Token;
+use crate::token::{Token};
 
 /// Defines all expression types, as defined in [the grammar definition](./lox_grammar.txt).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Binary(Binary),
     Unary(Unary),
     Grouping(Grouping),
     Literal(Literal),
+    Variable(Token),
+    Assignment(Assignment)
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Assignment {
+    pub name: Token,
+    pub value: Box<Expr>,
 }
 
 /// An expression that compares or operates on two expressions.
 /// Examples: `(1 * 2)`, `(3 < 4)`
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Binary {
     pub left: Box<Expr>,
     pub operator: Token,
@@ -20,19 +28,19 @@ pub struct Binary {
 
 /// An expression that operates on a single expression.
 /// Example: `(- 1)`
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Unary {
     pub operator: Token,
     pub right: Box<Expr>,
 }
 
 /// An arbitrary expression grouping.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Grouping {
     pub expression: Box<Expr>,
 }
 
-/// A literal value. Can be a string, 32-bit integer, or 32-bit float.
+/// A literal value. Can be a string, 32-bit integer, 32-bit float, boolean, or nil.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
     String(String),
