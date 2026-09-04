@@ -229,15 +229,17 @@ impl Interpreter {
 // each node on the AST. Rust's enum types allow us to bypass this step completely.
 pub fn print(expr: &Expr) -> String {
     match expr {
-        Expr::Binary(b) => parenthesize(&b.operator.lexeme, &[b.left.clone(), b.right.clone()]),
-        Expr::Unary(u) => parenthesize(&u.operator.lexeme, &[u.right.clone()]),
-        Expr::Grouping(g) => parenthesize("group", &[g.expression.clone()]),
+        Expr::Binary(b) => parenthesize(&b.operator.lexeme, &[&b.left, &b.right]),
+        Expr::Unary(u) => parenthesize(&u.operator.lexeme, &[&u.right]),
+        Expr::Grouping(g) => parenthesize("group", &[&g.expression]),
         Expr::Literal(l) => l.to_string(),
+        Expr::Variable(t) => t.lexeme.to_owned(),
+        Expr::Assignment(a) => String::from(&a.name.lexeme) + " = " + &print(&a.value),
     }
 }
 
 /// Surround one or more expressions in parentheses.
-fn parenthesize(lexeme: &str, exprs: &[Box<Expr>]) -> String {
+fn parenthesize(lexeme: &str, exprs: &[&Expr]) -> String {
     let mut statement = String::from("(");
     statement.push_str(lexeme);
     for expr in exprs {
