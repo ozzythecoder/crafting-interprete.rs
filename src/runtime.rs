@@ -100,14 +100,8 @@ impl Lox {
             }
         };
         let tokens = Scanner::new(source).scan_tokens();
-        let ast = match Parser::new(tokens).parse() {
-            Ok(tree) => tree,
-            Err(e) => {
-                self.error(e.message, e.token.line);
-                return;
-            }
-        };
-        match Interpreter::new(ast).interpret() {
+        let ast = Parser::new(tokens).parse();
+        match Interpreter::new().interpret(&ast) {
             Ok(_) => (),
             Err(e) => {
                 self.runtime_error(e);
