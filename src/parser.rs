@@ -213,7 +213,7 @@ impl Parser {
         }
     }
 
-    /// Returns `true` if the next token's type is one of the passed token types.
+    /// If the next token's type is one of the passed token types, consumes that token and returns `true`.
     /// For matching on a single token, use `self.check()`.
     fn match_expr(&mut self, tokens: &[TokenType]) -> bool {
         for token_type in tokens {
