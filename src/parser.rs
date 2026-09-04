@@ -81,7 +81,32 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expr, ParseError> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Expr, ParseError> {
+        // First we check the l-value to make sure it's a proper assignment target
+        // e.g. `a`, `foo.bar`, `newPoint(x + 2).y` etc
+        let expr = self.equality()?;
+
+        if self.match_expr(&[TokenType::Equal]) {
+            let equals = self.previous();
+            // The recursive evaluation processes the r-value as its own expression.
+            let value = self.assignment()?;
+
+            match expr {
+                Expr::Variable(v) => Ok(Expr::Assignment(Assignment {
+                    name: v,
+                    value: Box::new(value),
+                })),
+                _ => Err(ParseError {
+                    token: equals,
+                    message: String::from("Invalid assignment target"),
+                }),
+            }
+        } else {
+            Ok(expr)
+        }
     }
 
     fn equality(&mut self) -> Result<Expr, ParseError> {
