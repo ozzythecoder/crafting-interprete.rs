@@ -287,5 +287,61 @@ impl Parser {
     }
 }
 
+#[cfg(test)]
+mod parser_test {
+    use crate::expression::Literal;
+
+    use super::*;
+
+    #[test]
+    fn parses_var_declaration() {
+        // var a = 1;
+        let tokens: Vec<Token> = vec![
+            Token {
+                token_type: TokenType::Var,
+                lexeme: "var".to_string(),
+                line: None,
+                literal: None,
+            },
+            Token {
+                token_type: TokenType::Identifier,
+                lexeme: "a".to_string(),
+                line: None,
+                literal: None,
+            },
+            Token {
+                token_type: TokenType::Equal,
+                lexeme: "=".to_string(),
+                line: None,
+                literal: None,
+            },
+            Token {
+                token_type: TokenType::Number,
+                lexeme: "1".to_string(),
+                line: None,
+                literal: Some(Literal::Int(1)),
+            },
+            Token {
+                token_type: TokenType::SemiColon,
+                lexeme: ';'.to_string(),
+                line: None,
+                literal: None,
+            },
+            Token {
+                token_type: TokenType::EOF,
+                lexeme: "EOF".to_string(),
+                line: None,
+                literal: None,
+            },
+        ];
+
+        let parsed = Parser::new(tokens).parse();
+        assert_eq!(parsed.len(), 1);
+        let Stmt::Var { name, initializer } = &parsed[0] else {
+            panic!("expected a var declaration, got {:?}", parsed[0]);
+        };
+        
+        assert_eq!(name.lexeme, "a");
+        assert_eq!(initializer, &Some(Expr::Literal(Literal::Int(1))));
     }
 }
