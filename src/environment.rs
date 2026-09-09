@@ -4,12 +4,18 @@ use crate::{expression::Literal, interpreter::RuntimeError, token::Token};
 
 pub struct Environment {
     values: HashMap<String, Literal>,
+    enclosing: Option<Box<Environment>>,
 }
 
 impl Environment {
-    pub fn new() -> Self {
+    pub fn new(enclosing: Option<Environment>) -> Self {
         Environment {
             values: HashMap::new(),
+            enclosing: if let Some(e) = enclosing {
+                Some(Box::new(e))
+            } else {
+                None
+            },
         }
     }
 
