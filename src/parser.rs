@@ -63,6 +63,8 @@ impl Parser {
     fn statement(&mut self) -> Result<Stmt, ParseError> {
         if self.match_expr(&[TokenType::Print]) {
             self.print_statement()
+        } else if self.match_expr(&[TokenType::LeftBrace]) {
+            self.block_statement()
         } else {
             self.expression_statement()
         }
@@ -72,6 +74,15 @@ impl Parser {
         let value = self.expression()?;
         let _ = self.consume(TokenType::SemiColon, "Expect ';' after value.")?;
         Ok(Stmt::Print(value))
+    }
+
+    fn block_statement(&mut self) -> Result<Stmt, ParseError> {
+        let mut stmts = vec![];
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            stmts.push(self.declaration()?);
+        }
+        self.consume(TokenType::RightBrace, "Expected '{' after block statement.");
+        Ok(Stmt::Block(stmts))
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
@@ -206,6 +217,7 @@ impl Parser {
                 expression: Box::new(expr),
             }))
         } else if self.match_expr(&[TokenType::Identifier]) {
+            // TODO: restrict keywords as idnetifiers - or maybe this will happen naturally when we implement the keywords?
             Ok(Expr::Variable(self.previous()))
         } else {
             // Exhausted all options for valid syntax - report an error
@@ -340,7 +352,7 @@ mod parser_test {
         let Stmt::Var { name, initializer } = &parsed[0] else {
             panic!("expected a var declaration, got {:?}", parsed[0]);
         };
-        
+
         assert_eq!(name.lexeme, "a");
         assert_eq!(initializer, &Some(Expr::Literal(Literal::Int(1))));
     }

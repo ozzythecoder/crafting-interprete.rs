@@ -25,6 +25,10 @@ When parsing variables, we run into a different situation that is harder for a r
 
 - 🦀 Added a unit test to the parser to check for variable assignments. Will prob expand as our grammar gets more complex.
 
+## Environments
+
+Captures variable state. Implemented with a `HashMap<String, Literal>`. To implement **scope**, it looks like we'll be nesting environments in one another.
+
 ### Vocabulary
 - *l-value* - the left-hand side of an assignment expression
 - *r-value* - the expression, or right-hand side of an assignment expression
