@@ -23,7 +23,15 @@ impl Environment {
         self.values.insert(token.lexeme.to_owned(), value);
     }
 
-    pub fn get(&mut self, token: &Token) -> Result<&Literal, RuntimeError> {
+    pub fn get(&self, token: &Token) -> Result<&Literal, RuntimeError> {
+        if let Some(env) = &self.enclosing {
+            env.get(token)
+        } else {
+            self.get_var(token)
+        }
+    }
+
+    pub fn get_var(&self, token: &Token) -> Result<&Literal, RuntimeError> {
         match self.values.get(&token.lexeme) {
             Some(l) => Ok(l),
             None => Err(RuntimeError {
@@ -34,6 +42,14 @@ impl Environment {
     }
 
     pub fn assign(&mut self, token: &Token, value: &Literal) -> Result<(), RuntimeError> {
+        if let Some(env) = &mut self.enclosing {
+            env.assign(token, value)
+        } else {
+            self.assign_var(token, value)
+        }
+    }
+
+    fn assign_var(&mut self, token: &Token, value: &Literal) -> Result<(), RuntimeError> {
         if self.values.contains_key(&token.lexeme) {
             self.values.insert(token.lexeme.to_owned(), value.clone());
             Ok(())
