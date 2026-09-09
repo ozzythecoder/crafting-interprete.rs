@@ -3,13 +3,16 @@ program     -> statement* EOF ;
 declaration -> varDecl
             | statement ;
 
-statement   -> exprStmt
-            |  printStmt ;
-
 varDecl     -> "var" IDENTIFIER ( "=" expression )? ";" ;
+
+statement   -> exprStmt
+            |  printStmt
+            |  block ;
 
 exprStmt    -> expression ";" ;
 printStmt   -> "print" expression ";" ;
+
+block       -> "{" declaration "}" ;
 
 expression  -> assignment ;
 assignment  -> IDENTIFIER "=" assignment
