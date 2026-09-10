@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use crate::{expression::Literal, interpreter::RuntimeError, token::Token};
 
+#[derive(Default)]
 pub struct Environment {
-    values: HashMap<String, Literal>,
-    enclosing: Option<Box<Environment>>,
+    pub values: HashMap<String, Literal>,
+    pub enclosing: Option<Box<Environment>>,
 }
 
 impl Environment {
