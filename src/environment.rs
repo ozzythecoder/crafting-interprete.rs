@@ -25,21 +25,17 @@ impl Environment {
     }
 
     pub fn get(&self, token: &Token) -> Result<&Literal, RuntimeError> {
-        if let Some(env) = &self.enclosing {
+        if let Some(v) = self.get_var(token) {
+            Ok(v)
+        } else if let Some(env) = &self.enclosing {
             env.get(token)
         } else {
-            self.get_var(token)
+            Err(self.undefined_var(token))
         }
     }
 
-    pub fn get_var(&self, token: &Token) -> Result<&Literal, RuntimeError> {
-        match self.values.get(&token.lexeme) {
-            Some(l) => Ok(l),
-            None => Err(RuntimeError {
-                token: token.clone(),
-                message: String::from("Undeclared variable"),
-            }),
-        }
+    fn get_var(&self, token: &Token) -> Option<&Literal> {
+        self.values.get(&token.lexeme)
     }
 
     pub fn assign(&mut self, token: &Token, value: &Literal) -> Result<(), RuntimeError> {
@@ -55,10 +51,14 @@ impl Environment {
             self.values.insert(token.lexeme.to_owned(), value.clone());
             Ok(())
         } else {
-            Err(RuntimeError {
-                token: token.clone(),
-                message: String::from("Undefined variable"),
-            })
+            Err(self.undefined_var(token))
+        }
+    }
+
+    fn undefined_var(&self, token: &Token) -> RuntimeError {
+        RuntimeError {
+            token: token.clone(),
+            message: String::from("Undefined variable"),
         }
     }
 }
