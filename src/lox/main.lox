@@ -1,1 +1,14 @@
-1 + 2
+var a = "outside";
+var b = "outside";
+print a;
+print b;
+{
+    var a = "inside";
+    var b = "inside";
+    {
+        var a = "inside even more";
+        print a;
+    }
+    print a;
+    print b;
+}
