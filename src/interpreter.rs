@@ -67,6 +67,25 @@ impl Interpreter {
                     None
                 }
             },
+            Stmt::Block(block) => {
+                // create new environment, with current environment as enclosing
+                let prev_env = std::mem::take(&mut self.environment);
+                self.environment = Environment::new(Some(prev_env));
+
+                // evaluate contents of block
+                let result = self.interpret(block);
+
+                // take enclosing environment back from child and reset
+                let child_env = std::mem::take(&mut self.environment);
+                self.environment = *child_env
+                    .enclosing
+                    .expect("Block env cannot be build without a parent");
+
+                match result {
+                    Ok(()) => None,
+                    Err(e) => Some(Err(e)),
+                }
+            }
         }
     }
 
