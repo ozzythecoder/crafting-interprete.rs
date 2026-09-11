@@ -15,9 +15,9 @@ pub enum Expr {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Call {
-    callee: Box<Expr>,
-    paren: Token,
-    args: Vec<Expr>,
+    pub callee: Box<Expr>,
+    pub paren: Token,
+    pub args: Vec<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
