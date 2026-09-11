@@ -1,5 +1,5 @@
 use crate::{
-    expression::{Assignment, Binary, Expr, Grouping, Literal, Unary},
+    expression::{Assignment, Binary, Expr, Grouping, Literal, Logical, Unary},
     statement::Stmt,
     token::{Token, TokenType},
 };
@@ -119,7 +119,7 @@ impl Parser {
     fn assignment(&mut self) -> Result<Expr, ParseError> {
         // First we check the l-value to make sure it's a proper assignment target
         // e.g. `a`, `foo.bar`, `newPoint(x + 2).y` etc
-        let expr = self.equality()?;
+        let expr = self.or()?;
 
         if self.match_expr(&[TokenType::Equal]) {
             let equals = self.previous();
@@ -139,6 +139,38 @@ impl Parser {
         } else {
             Ok(expr)
         }
+    }
+
+    fn or(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.and()?;
+
+        while self.match_expr(&[TokenType::Or]) {
+            let operator = self.previous();
+            let right = self.equality()?;
+            expr = Expr::Logical(Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            });
+        }
+
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.equality()?;
+
+        while self.match_expr(&[TokenType::And]) {
+            let operator = self.previous();
+            let right = self.equality()?;
+            expr = Expr::Logical(Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            });
+        }
+
+        Ok(expr)
     }
 
     fn equality(&mut self) -> Result<Expr, ParseError> {
