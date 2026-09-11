@@ -128,6 +128,17 @@ impl Interpreter {
                     Ok(val)
                 }
             }
+            Expr::Logical(l) => {
+                let left = self.evaluate_expression(&l.left)?;
+
+                if l.operator.token_type == TokenType::Or && left.is_truthy() {
+                    Ok(left)
+                } else if !left.is_truthy() {
+                    Ok(left)
+                } else {
+                    self.evaluate_expression(&l.right)
+                }
+            }
             Expr::Unary(u) => {
                 let right = self.evaluate_expression(&u.right)?;
 
@@ -287,6 +298,7 @@ pub fn print(expr: &Expr) -> String {
         Expr::Literal(l) => l.to_string(),
         Expr::Variable(t) => t.lexeme.to_owned(),
         Expr::Assignment(a) => String::from(&a.name.lexeme) + " = " + &print(&a.value),
+        Expr::Logical(l) => parenthesize(&l.operator.lexeme, &[&l.left, &l.right]),
     }
 }
 
