@@ -338,7 +338,7 @@ impl Parser {
     fn finish_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
         let mut args: Vec<Expr> = vec![];
         if !self.check(TokenType::RightParen) {
-            while self.match_expr(&[TokenType::Comma]) {
+            loop {
                 if args.len() >= 255 {
                     return Err(ParseError {
                         token: self.peek().clone(),
@@ -346,6 +346,10 @@ impl Parser {
                     });
                 }
                 args.push(self.expression()?);
+                
+                if self.match_expr(&[TokenType::Comma]) {
+                    break;
+                }
             }
         };
         let paren = self.consume(TokenType::RightParen, "Expected ')' after arguments.")?;
