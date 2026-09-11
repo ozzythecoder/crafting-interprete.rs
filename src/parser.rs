@@ -73,9 +73,9 @@ impl Parser {
     }
 
     fn if_statement(&mut self) -> Result<Stmt, ParseError> {
-        self.consume(TokenType::LeftParen, "Expected '(' after 'if'.");
+        self.consume(TokenType::LeftParen, "Expected '(' after 'if'.")?;
         let condition = self.expression()?;
-        self.consume(TokenType::RightParen, "Expected ')' after if condition.");
+        self.consume(TokenType::RightParen, "Expected ')' after if condition.")?;
 
         let then_branch = self.statement()?;
         let else_branch = if self.match_expr(&[TokenType::Else]) {
