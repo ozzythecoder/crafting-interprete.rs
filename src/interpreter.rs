@@ -112,6 +112,15 @@ impl Interpreter {
                 }
                 Err(e) => Some(Err(e)),
             },
+            Stmt::While { condition, body } => match self.evaluate_expression(condition) {
+                Ok(val) => {
+                    while val.is_truthy() {
+                        self.evaluate(body);
+                    }
+                    None
+                }
+                Err(e) => Some(Err(e)),
+            },
         }
     }
 
@@ -138,7 +147,7 @@ impl Interpreter {
                 } else if !left.is_truthy() {
                     return Ok(left);
                 }
-                
+
                 return self.evaluate_expression(&l.right);
             }
             Expr::Unary(u) => {
