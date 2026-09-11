@@ -14,6 +14,16 @@ impl ToString for Value {
     }
 }
 
+impl Value {
+    fn is_truthy(&self) -> bool {
+        match self.0 {
+            Literal::False | Literal::Nil => false,
+            Literal::Boolean(b) => b,
+            _ => true,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct RuntimeError {
     pub token: Token,
