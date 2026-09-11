@@ -1,14 +1,15 @@
-use crate::token::{Token};
+use crate::token::Token;
 
 /// Defines all expression types, as defined in [the grammar definition](./lox_grammar.txt).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Binary(Binary),
     Unary(Unary),
+    Logical(Logical),
     Grouping(Grouping),
     Literal(Literal),
     Variable(Token),
-    Assignment(Assignment)
+    Assignment(Assignment),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -30,6 +31,13 @@ pub struct Binary {
 /// Example: `(- 1)`
 #[derive(Debug, Clone, PartialEq)]
 pub struct Unary {
+    pub operator: Token,
+    pub right: Box<Expr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Logical {
+    pub left: Box<Expr>,
     pub operator: Token,
     pub right: Box<Expr>,
 }
