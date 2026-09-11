@@ -112,15 +112,20 @@ impl Interpreter {
                 }
                 Err(e) => Some(Err(e)),
             },
-            Stmt::While { condition, body } => match self.evaluate_expression(condition) {
-                Ok(val) => {
-                    while val.is_truthy() {
-                        self.evaluate(body);
+            Stmt::While { condition, body } => {
+                loop {
+                    match self.evaluate_expression(condition) {
+                        Ok(val) => {
+                            if !val.is_truthy() {
+                                break;
+                            }
+                            self.evaluate(body);
+                        }
+                        Err(e) => return Some(Err(e)),
                     }
-                    None
                 }
-                Err(e) => Some(Err(e)),
-            },
+                None
+            }
         }
     }
 
