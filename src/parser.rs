@@ -54,7 +54,7 @@ impl Parser {
         } else {
             None
         };
-        let _ = self.consume(
+        self.consume(
             TokenType::SemiColon,
             "Expected ';' after variable declaration.",
         )?;
@@ -384,6 +384,7 @@ impl Parser {
     }
 
     /// Returns `true` if the next token's type is equal to the passed token type, and is not EOF.
+    /// Does not consume the token.
     fn check(&self, token_type: TokenType) -> bool {
         if self.is_at_end() {
             false
