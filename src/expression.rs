@@ -10,6 +10,14 @@ pub enum Expr {
     Literal(Literal),
     Variable(Token),
     Assignment(Assignment),
+    Call(Call),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Call {
+    callee: Box<Expr>,
+    paren: Token,
+    args: Vec<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
