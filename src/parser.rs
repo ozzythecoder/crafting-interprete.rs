@@ -339,6 +339,12 @@ impl Parser {
         let mut args: Vec<Expr> = vec![];
         if !self.check(TokenType::RightParen) {
             while self.match_expr(&[TokenType::Comma]) {
+                if args.len() >= 255 {
+                    return Err(ParseError {
+                        token: self.peek().clone(),
+                        message: "Exceeded maximum number of function arguments (255).".to_owned(),
+                    });
+                }
                 args.push(self.expression()?);
             }
         };
