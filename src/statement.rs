@@ -4,7 +4,18 @@ use crate::{expression::Expr, token::Token};
 pub enum Stmt {
     Expression(Expr),
     Print(Expr),
-    Var { name: Token, initializer: Option<Expr> },
+    Var {
+        name: Token,
+        initializer: Option<Expr>,
+    },
     Block(Vec<Stmt>),
-    If { condition: Expr, then_branch: Box<Stmt>, else_branch: Option<Box<Stmt>> }
+    If {
+        condition: Expr,
+        then_branch: Box<Stmt>,
+        else_branch: Option<Box<Stmt>>,
+    },
+    While {
+        condition: Expr,
+        body: Box<Stmt>,
+    },
 }
