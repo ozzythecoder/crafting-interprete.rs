@@ -89,7 +89,7 @@ impl Interpreter {
                 let child_env = std::mem::take(&mut self.environment);
                 self.environment = *child_env
                     .enclosing
-                    .expect("Block env cannot be build without a parent");
+                    .expect("Block env cannot be built without a parent");
 
                 match result {
                     Ok(()) => None,
