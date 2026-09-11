@@ -31,6 +31,7 @@ impl Parser {
                 Ok(s) => self.statements.push(s),
                 Err(e) => {
                     self.parse_error(e);
+                    self.advance();
                 }
             }
         }
