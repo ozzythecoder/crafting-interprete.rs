@@ -96,6 +96,22 @@ impl Interpreter {
                     Err(e) => Some(Err(e)),
                 }
             }
+            Stmt::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => match self.evaluate_expression(condition) {
+                Ok(r) => {
+                    if r.is_truthy() {
+                        self.evaluate(then_branch)
+                    } else if let Some(else_branch) = else_branch {
+                        self.evaluate(else_branch)
+                    } else {
+                        None
+                    }
+                }
+                Err(e) => Some(Err(e)),
+            },
         }
     }
 
