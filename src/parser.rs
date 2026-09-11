@@ -61,7 +61,9 @@ impl Parser {
     }
 
     fn statement(&mut self) -> Result<Stmt, ParseError> {
-        if self.match_expr(&[TokenType::Print]) {
+        if self.match_expr(&[TokenType::For]) {
+            self.for_statement()
+        } else if self.match_expr(&[TokenType::Print]) {
             self.print_statement()
         } else if self.match_expr(&[TokenType::If]) {
             self.if_statement()
@@ -72,6 +74,58 @@ impl Parser {
         } else {
             self.expression_statement()
         }
+    }
+
+    /// Desugars a for loop into a while loop.
+    fn for_statement(&mut self) -> Result<Stmt, ParseError> {
+        self.consume(TokenType::LeftParen, "Expected '(' after 'for'.")?;
+
+        let initializer = if self.match_expr(&[TokenType::SemiColon]) {
+            None
+        } else if self.check(TokenType::Var) {
+            Some(self.var_declaration()?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+
+        let mut condition = if !self.match_expr(&[TokenType::RightParen]) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(
+            TokenType::SemiColon,
+            "Expected ';' after for-loop condition.",
+        )?;
+
+        let incrementer = if !self.match_expr(&[TokenType::RightParen]) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenType::RightParen, "Expected ')' after for clause.")?;
+
+        let mut body = self.statement()?;
+
+        if let Some(incr) = incrementer {
+            body = Stmt::Block(vec![body, Stmt::Expression(incr)]);
+        };
+
+        condition = if condition.is_none() {
+            Some(Expr::Literal(Literal::True))
+        } else {
+            condition
+        };
+        body = Stmt::While {
+            condition: condition.expect("Condition should exist by this point."),
+            body: Box::new(body),
+        };
+
+        if let Some(init) = initializer {
+            body = Stmt::Block(vec![init, body]);
+        };
+
+        Ok(body)
     }
 
     fn if_statement(&mut self) -> Result<Stmt, ParseError> {
