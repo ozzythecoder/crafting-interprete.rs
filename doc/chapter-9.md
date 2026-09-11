@@ -25,3 +25,36 @@ match self.evaluate_expression(condition) {
             // ...
 ```
 
+## For/while loops
+
+Turned off my brain for a bit here. I naïvely transliterated the Java code to Rust, which caused this nasty infinite loop:
+```rust
+Stmt::While { condition, body } => match self.evaluate_expression(condition) => {
+    Ok(val) => {
+        while val.is_truthy() {
+            self.evaluate(body)?
+        }
+        // ...
+    }
+}
+```
+
+So `condition.is_truthy()` is evaluated once, and then gets stuck. And I was wondering why the debugger kept crashing my computer...
+
+The updated code uses a plain `loop` and runs `evaluate_expression` repeatedly, breaking on a falsy value or an error:
+```rust
+Stmt::While { condition, body } => {
+    loop {
+        match self.evaluate_expression(condition) => {
+            Ok(val) => {
+                if !val.is_truthy() {
+                    break;
+                }
+                self.evaluate(body)?;
+            },
+            Err(e) => return Some(Err(e)),
+        }
+    }
+    None
+}
+```
