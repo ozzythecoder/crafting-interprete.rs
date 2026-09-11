@@ -1,5 +1,5 @@
 use crate::{
-    expression::{Assignment, Binary, Expr, Grouping, Literal, Logical, Unary},
+    expression::{Assignment, Binary, Call, Expr, Grouping, Literal, Logical, Unary},
     statement::Stmt,
     token::{Token, TokenType},
 };
@@ -317,8 +317,38 @@ impl Parser {
                 right: Box::new(right),
             }))
         } else {
-            self.primary()
+            self.call()
         }
+    }
+
+    fn call(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.primary()?;
+
+        loop {
+            if self.match_expr(&[TokenType::LeftParen]) {
+                expr = self.finish_call(expr)?;
+            } else {
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
+        let mut args: Vec<Expr> = vec![];
+        if !self.check(TokenType::RightParen) {
+            while self.match_expr(&[TokenType::Comma]) {
+                args.push(self.expression()?);
+            }
+        };
+        let paren = self.consume(TokenType::RightParen, "Expected ')' after arguments.")?;
+
+        Ok(Expr::Call(Call {
+            callee: Box::new(callee),
+            paren,
+            args,
+        }))
     }
 
     /// Represents all literals and expression groups. The grammatical bottom.
