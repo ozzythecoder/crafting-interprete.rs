@@ -102,7 +102,7 @@ impl Parser {
         while !self.check(TokenType::RightBrace) && !self.is_at_end() {
             stmts.push(self.declaration()?);
         }
-        self.consume(TokenType::RightBrace, "Expected '{' after block statement.");
+        self.consume(TokenType::RightBrace, "Expected '{' after block statement.")?;
         Ok(Stmt::Block(stmts))
     }
 
