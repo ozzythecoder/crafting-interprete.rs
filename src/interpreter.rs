@@ -32,12 +32,16 @@ pub struct RuntimeError {
 
 pub struct Interpreter {
     environment: Environment,
+    globals: Environment,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
+        let globals = Environment::new(None);
+        // environment
         Interpreter {
             environment: Environment::new(None),
+            globals: Environment::new(None),
         }
     }
 
