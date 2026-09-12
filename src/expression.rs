@@ -68,6 +68,16 @@ pub enum Literal {
     Nil,
 }
 
+impl Literal {
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Literal::False | Literal::Nil => false,
+            Literal::Boolean(b) => b.clone(),
+            _ => true,
+        }
+    }
+}
+
 impl ToString for Literal {
     fn to_string(&self) -> String {
         match self {
