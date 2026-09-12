@@ -56,6 +56,9 @@ pub struct Grouping {
     pub expression: Box<Expr>,
 }
 
+pub struct Function;
+pub struct Class;
+
 /// A literal value. Can be a string, 32-bit integer, 32-bit float, boolean, or nil.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
