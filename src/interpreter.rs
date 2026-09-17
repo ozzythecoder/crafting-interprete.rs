@@ -1,28 +1,63 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{
     environment::Environment,
-    expression::{Expr, Literal},
+    expression::{
+        Callable, Expr, Function, IsTruthy, Literal, NativeFunction, TCallable, Value,
+        to_callable_value,
+    },
+    globals::clock_native,
     statement::Stmt,
     token::{Token, TokenType},
 };
 
-#[derive(Debug)]
+pub enum Interrupt<E> {
+    Return { value: Value },
+    Error(E),
+}
+
+impl<E> Interrupt<E> {
+    fn is_err(&self) -> bool {
+        match self {
+            Self::Error(_) => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct RuntimeError {
     pub token: Token,
     pub message: String,
 }
 
+impl RuntimeError {
+    pub fn wrap(&self) -> Interrupt<RuntimeError> {
+        Interrupt::Error(self.clone())
+    }
+}
+
 pub struct Interpreter {
-    environment: Environment,
-    globals: Environment,
+    pub environment: Rc<RefCell<Environment>>,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        let globals = Environment::new(None);
-        // environment
+        let mut globals = Environment::new(None);
+
+        globals.define_native(
+            "clock",
+            to_callable_value(Callable::Native(NativeFunction {
+                name: "clock".into(),
+                arity: 0,
+                func: clock_native,
+            })),
+        );
+
+        let global_cell = Rc::new(RefCell::new(globals));
+
         Interpreter {
-            environment: Environment::new(None),
-            globals: Environment::new(None),
+            environment: Rc::new(RefCell::new(Environment::new(Some(global_cell)))),
         }
     }
 
