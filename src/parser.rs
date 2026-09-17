@@ -39,11 +39,46 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Result<Stmt, ParseError> {
-        if self.check(TokenType::Var) {
+        if self.check(TokenType::Fun) {
+            self.function_declaration("function")
+        } else if self.check(TokenType::Var) {
             self.var_declaration()
         } else {
             self.statement()
         }
+    }
+
+    fn function_declaration(&mut self, kind: &str) -> Result<Stmt, ParseError> {
+        self.advance();
+        let name = self.consume(
+            TokenType::Identifier,
+            &(String::from("Expected ") + kind + " name."),
+        )?;
+        self.consume(
+            TokenType::LeftParen,
+            &(String::from("Expected '(' after ") + kind + " name"),
+        )?;
+
+        let mut params: Vec<Token> = vec![];
+
+        if !self.check(TokenType::RightParen) {
+            // we have at least one function parameter
+            loop {
+                params.push(self.consume(TokenType::Identifier, "Expected parameter name.")?);
+                if !self.match_expr(&[TokenType::Comma]) {
+                    break;
+                }
+            }
+        }
+        self.consume(TokenType::RightParen, "Expected ')' after parameters.")?;
+        self.consume(
+            TokenType::LeftBrace,
+            &(String::from("Expected '{' before") + kind + " body."),
+        )?;
+
+        let body = self.block()?;
+
+        Ok(Stmt::Function { name, params, body })
     }
 
     fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
@@ -68,6 +103,8 @@ impl Parser {
             self.print_statement()
         } else if self.match_expr(&[TokenType::If]) {
             self.if_statement()
+        } else if self.match_expr(&[TokenType::Return]) {
+            self.return_statement()
         } else if self.match_expr(&[TokenType::While]) {
             self.while_statement()
         } else if self.match_expr(&[TokenType::LeftBrace]) {
@@ -75,6 +112,18 @@ impl Parser {
         } else {
             self.expression_statement()
         }
+    }
+
+    fn return_statement(&mut self) -> Result<Stmt, ParseError> {
+        let keyword = self.previous();
+        let value = if !self.check(TokenType::SemiColon) {
+            Some(Box::new(self.expression()?))
+        } else {
+            None
+        };
+
+        self.consume(TokenType::SemiColon, "Expected ';' after return value.")?;
+        Ok(Stmt::Return { keyword, value })
     }
 
     /// Desugars a for loop into a while loop.
@@ -166,12 +215,16 @@ impl Parser {
     }
 
     fn block_statement(&mut self) -> Result<Stmt, ParseError> {
+        Ok(Stmt::Block(self.block()?))
+    }
+
+    fn block(&mut self) -> Result<Vec<Stmt>, ParseError> {
         let mut stmts = vec![];
         while !self.check(TokenType::RightBrace) && !self.is_at_end() {
             stmts.push(self.declaration()?);
         }
         self.consume(TokenType::RightBrace, "Expected '{' after block statement.")?;
-        Ok(Stmt::Block(stmts))
+        Ok(stmts)
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
@@ -346,8 +399,7 @@ impl Parser {
                     });
                 }
                 args.push(self.expression()?);
-                
-                if self.match_expr(&[TokenType::Comma]) {
+                if !self.match_expr(&[TokenType::Comma]) {
                     break;
                 }
             }
