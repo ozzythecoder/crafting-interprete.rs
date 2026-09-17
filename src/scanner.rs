@@ -28,7 +28,7 @@ impl Scanner {
             self.scan_token();
         }
         self.tokens.push(Token {
-            token_type: TokenType::EOF,
+            token_type: TokenType::Eof,
             lexeme: String::from(""),
             line: None,
             literal: None,
@@ -206,11 +206,9 @@ impl Scanner {
             }
         }
 
-        let num = String::from(
-            self.source[self.start..self.current]
+        let num = self.source[self.start..self.current]
                 .iter()
-                .collect::<String>(),
-        );
+                .collect::<String>();
 
         let token_type = TokenType::Number;
 
@@ -241,11 +239,11 @@ impl Scanner {
     }
 
     fn is_alpha(&self, c: char) -> bool {
-        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+        c.is_ascii_lowercase() || c.is_ascii_uppercase() || c == '_'
     }
 
     fn is_digit(&self, c: char) -> bool {
-        c >= '0' && c <= '9'
+        c.is_ascii_digit()
     }
 
     fn is_alphanumeric(&self, c: char) -> bool {

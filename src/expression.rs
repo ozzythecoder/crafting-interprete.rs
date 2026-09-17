@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, fmt::Display, rc::Rc};
 
 use crate::{
     interpreter::{Interpreter, Interrupt, RuntimeError}, statement::Stmt, token::Token,
@@ -21,6 +21,7 @@ pub enum Expr {
     Call(Call),
 }
 
+/// The result of an evaluated expression. AKA an r-value
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Literal(Literal),
@@ -40,11 +41,11 @@ impl IsTruthy for Value {
     }
 }
 
-impl ToString for Value {
-    fn to_string(&self) -> String {
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Callable(_) => String::from("<native fn>"),
-            Self::Literal(l) => l.to_string(),
+            Self::Callable(_) => write!(f, "<function>"),
+            Self::Literal(l) => write!(f, "{}", l),
         }
     }
 }
@@ -153,28 +154,28 @@ impl IsTruthy for Literal {
     fn is_truthy(&self) -> bool {
         match self {
             Literal::False | Literal::Nil => false,
-            Literal::Boolean(b) => b.clone(),
+            Literal::Boolean(b) => *b,
             _ => true,
         }
     }
 }
 
-impl ToString for Literal {
-    fn to_string(&self) -> String {
+impl Display for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Literal::String(s) => s.clone(),
-            Literal::Int(i) => i.to_string(),
-            Literal::Float(f) => f.to_string(),
+            Literal::String(s) => write!(f, "{}", s),
+            Literal::Int(i) => write!(f, "{}", i),
+            Literal::Float(fl) => write!(f, "{}", fl),
             Literal::Boolean(b) => {
                 if *b {
-                    "true".to_owned()
+                    write!(f, "true")
                 } else {
-                    "false".to_owned()
+                    write!(f, "false")
                 }
             }
-            Literal::True => "true".to_owned(),
-            Literal::False => "false".to_owned(),
-            Literal::Nil => "nil".to_owned(),
+            Literal::True => write!(f, "true"),
+            Literal::False => write!(f, "false"),
+            Literal::Nil => write!(f, "nil"),
         }
     }
 }

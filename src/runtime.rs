@@ -76,7 +76,7 @@ impl Lox {
                     self.run(line.into_bytes());
                     self.had_error = false;
                 }
-                Err(_) => self.error(format!("Could not read stdin"), None),
+                Err(_) => self.error("Could not read stdin".to_string(), None),
             };
         }
     }
@@ -112,10 +112,11 @@ impl Lox {
         let ast = Parser::new(tokens).parse();
         match Interpreter::new().interpret(&ast) {
             Ok(_) => (),
-            Err(e) => match e {
-                crate::interpreter::Interrupt::Error(e) => self.runtime_error(e),
-                _ => (),
-            },
+            Err(e) => {
+                if let crate::interpreter::Interrupt::Error(e) = e {
+                    self.runtime_error(e)
+                }
+            }
         };
     }
 }

@@ -18,10 +18,7 @@ pub enum Interrupt<E> {
 
 impl<E> Interrupt<E> {
     fn is_err(&self) -> bool {
-        match self {
-            Self::Error(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Error(_))
     }
 }
 
@@ -63,7 +60,7 @@ impl Interpreter {
 
     pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), Interrupt<RuntimeError>> {
         for stmt in statements {
-            match self.evaluate(&stmt) {
+            match self.evaluate(stmt) {
                 Some(r) => match r {
                     Ok(_) => continue,
                     Err(e) => return Err(e),
@@ -91,21 +88,19 @@ impl Interpreter {
 
         // evaluate contents of block
         for stmt in block {
-            match self.evaluate(stmt) {
-                Some(s) => match s {
-                    Err(e) => match e {
-                        Interrupt::Error(err) => {
-                            return_value = Some(Err(err.wrap()));
-                            break;
-                        }
-                        Interrupt::Return { value } => {
-                            return_value = Some(Ok(value));
-                            break;
-                        }
-                    },
-                    Ok(_) => (),
-                },
-                None => (),
+            if let Some(s) = self.evaluate(stmt)
+                && let Err(e) = s
+            {
+                match e {
+                    Interrupt::Error(err) => {
+                        return_value = Some(Err(err.wrap()));
+                        break;
+                    }
+                    Interrupt::Return { value } => {
+                        return_value = Some(Ok(value));
+                        break;
+                    }
+                }
             }
         }
 
@@ -250,7 +245,12 @@ impl Interpreter {
         }
     }
 
-    pub fn check_arity(&self, arity: usize, len: usize, token: &Token) -> Result<(), Interrupt<RuntimeError>> {
+    pub fn check_arity(
+        &self,
+        arity: usize,
+        len: usize,
+        token: &Token,
+    ) -> Result<(), Interrupt<RuntimeError>> {
         if arity != len {
             let msg = if len > arity {
                 "Too many arguments to function."
@@ -294,7 +294,7 @@ impl Interpreter {
                     return Ok(left);
                 }
 
-                return self.evaluate_expression(&l.right);
+                self.evaluate_expression(&l.right)
             }
             Expr::Unary(u) => {
                 let right = self.evaluate_expression(&u.right)?;
@@ -303,7 +303,7 @@ impl Interpreter {
                     // e.g. (-1)
                     TokenType::Minus => match right {
                         Value::Literal(Literal::Int(int)) => {
-                            Ok(Value::Literal(Literal::Int(-1 * int)))
+                            Ok(Value::Literal(Literal::Int(-int)))
                         }
                         Value::Literal(Literal::Float(float)) => {
                             Ok(Value::Literal(Literal::Float(-1.0 * float)))
@@ -519,9 +519,9 @@ fn parenthesize(lexeme: &str, exprs: &[&Expr]) -> String {
     let mut statement = String::from("(");
     statement.push_str(lexeme);
     for expr in exprs {
-        statement.push_str(" ");
+        statement.push(' ');
         statement.push_str(&print(expr));
     }
-    statement.push_str(")");
+    statement.push(')');
     statement
 }

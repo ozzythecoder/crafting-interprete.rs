@@ -39,7 +39,7 @@ impl Environment {
     }
 
     pub fn assign(&mut self, token: &Token, value: &Value) -> Result<(), Interrupt<RuntimeError>> {
-        if let Some(_) = self.get_var(token) {
+        if self.get_var(token).is_some() {
             self.assign_var(token, value)
         } else if self.enclosing.is_some() {
             let env = self.enclosing.as_mut().expect("Quantum nonsense");

@@ -50,7 +50,7 @@ pub enum TokenType {
     Var,
     While,
 
-    EOF,
+    Eof,
 }
 
 impl Display for TokenType {
@@ -67,14 +67,16 @@ pub struct Token {
     pub literal: Option<Literal>,
 }
 
-impl ToString for Token {
-    fn to_string(&self) -> String {
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let line = if let Some(l) = self.line {
             l.to_string()
         } else {
-            "".to_owned()
+            "".to_string()
         };
-        format!(
+
+        write!(
+            f,
             "{} {} {:?} {}",
             self.token_type, self.lexeme, self.literal, line
         )

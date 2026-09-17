@@ -472,7 +472,7 @@ impl Parser {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     /// Returns `true` if the next token's type is equal to the passed token type, and is not EOF.
@@ -494,7 +494,7 @@ impl Parser {
     }
 
     fn is_at_end(&self) -> bool {
-        self.peek().token_type == TokenType::EOF
+        self.peek().token_type == TokenType::Eof
     }
 
     /// Returns the next unconsumed token.
@@ -554,7 +554,7 @@ mod parser_test {
                 literal: None,
             },
             Token {
-                token_type: TokenType::EOF,
+                token_type: TokenType::Eof,
                 lexeme: "EOF".to_string(),
                 line: None,
                 literal: None,
