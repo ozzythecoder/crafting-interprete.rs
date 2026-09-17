@@ -104,7 +104,7 @@ impl Scanner {
                 } else if self.is_alpha(c) {
                     self.consume_identifier();
                 } else {
-                    todo!() // propagate error back to Lox class
+                    todo!("Invalid character")
                 }
             }
         };

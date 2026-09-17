@@ -1,7 +1,16 @@
-use std::{env::Args, fs, io::{BufRead, Write}, path::PathBuf, process};
+use std::{
+    env::Args,
+    fs,
+    io::{BufRead, Write},
+    path::PathBuf,
+    process,
+};
 
-use crate::{interpreter::{RuntimeError, Interpreter}, parser::Parser, scanner::Scanner};
-
+use crate::{
+    interpreter::{Interpreter, RuntimeError},
+    parser::Parser,
+    scanner::Scanner,
+};
 
 pub struct Lox {
     had_error: bool,
@@ -67,7 +76,7 @@ impl Lox {
                     self.run(line.into_bytes());
                     self.had_error = false;
                 }
-                Err(_) => self.error(format!("Error: could not read stdin"), None),
+                Err(_) => self.error(format!("Could not read stdin"), None),
             };
         }
     }
@@ -103,9 +112,10 @@ impl Lox {
         let ast = Parser::new(tokens).parse();
         match Interpreter::new().interpret(&ast) {
             Ok(_) => (),
-            Err(e) => {
-                self.runtime_error(e);
-            }
+            Err(e) => match e {
+                crate::interpreter::Interrupt::Error(e) => self.runtime_error(e),
+                _ => (),
+            },
         };
     }
 }

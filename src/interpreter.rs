@@ -502,6 +502,7 @@ impl Interpreter {
 // each node on the AST. Rust's enum types allow us to bypass this step completely.
 pub fn print(expr: &Expr) -> String {
     match expr {
+        Expr::Call(c) => todo!(),
         Expr::Binary(b) => parenthesize(&b.operator.lexeme, &[&b.left, &b.right]),
         Expr::Unary(u) => parenthesize(&u.operator.lexeme, &[&u.right]),
         Expr::Grouping(g) => parenthesize("group", &[&g.expression]),
