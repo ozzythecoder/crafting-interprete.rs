@@ -29,7 +29,7 @@ This one's gonna suck huh.
 
 - ☕ The book handles interpreting functions by type-casting the callee into a `LoxCallable`, which is an object with a `call` method that takes `this` and an array of arguments as parameters.
 - [x] 🦀 We don't have plain "objects", and type-casting from a `Value(Literal)` to a `Callable` struct isn't doable outright. We can solve that by just creating a new `Callable` struct.
-- [ ] However, the issue is that we are now moving the `Result<Stmt, RuntimeError>` chain OUTSIDE of the interpreter struct, which feels icky. How do we solve this?
+- [x] However, the issue is that we are now moving the `Result<Stmt, RuntimeError>` chain OUTSIDE of the interpreter struct, which feels icky. How do we solve this?
 
 ### Call type errors
 
@@ -379,6 +379,13 @@ Some thoughts I still have:
     - But `*callee.borrow()` doesn't work when the match arms take ownership, because `Callee` doesn't and shouldn't implement `Copy`.
     - ....so why does the reference to the dereference work? Why is Rust able to reach behind the `&` reference, but not a `Ref`?
     - I found this solution from [this stackoverflow article](https://stackoverflow.com/questions/57928209/matching-with-rcrefcellt) with a similar problem.
-    - **UPDATE**: I misunderstood: `Ref` isn't related to references at all. It's the *reference counting* smart pointer, and it guards the underlying data until you dereference it. This is still confusing to me, but I'm gonna keep researching and chewing on it.
+    - **UPDATE**: I misunderstood: `Ref` isn't related to references at all. It's the smart pointer that guards the underlying data until you dereference it.
+        - Rust, rather than lvalues and rvalues, refers to "places" and "values". So `callee.borrow()`, while being an expression, is still a pointer to a *place* - a conceptual container for data.
+        - `*callee.borrow()` does two things:
+            1. Calls the `deref()` method on `Ref<Callee>`, giving a `&Callee`
+            2. ALSO dereferences the `&Callee`, giving a `Callee`. This was the part of the logic I missed.
+        - Finally, the `&` gives us a reference again, returning to `&Callee`.
+        - I could skip the last two steps by just matching on `callee.borrow().deref()`. Same result, without the need for the strange ref/deref juggle. But this seems to be idiomatically discouraged.
+    - This is still confusing to me, but I'm gonna keep chewing on it.
 
 Anyway, that about it does it for functions in Lox. Definitely the hardest chapter yet, required a lot of refactoring, but really got me to get more immersed into both Rust and interpreters in general. Cool stuff.
