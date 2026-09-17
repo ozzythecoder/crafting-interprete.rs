@@ -6,6 +6,7 @@ mod expression;
 mod globals;
 mod interpreter;
 mod parser;
+mod resolver;
 mod runtime;
 mod scanner;
 mod statement;
