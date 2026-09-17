@@ -201,7 +201,68 @@ impl Interpreter {
         }
     }
 
-    fn evaluate_expression(&mut self, expr: &Expr) -> Result<Literal, RuntimeError> {
+    pub fn call(
+        &mut self,
+        callee: Rc<RefCell<Callable>>,
+        args: Vec<Value>,
+        token: &Token,
+    ) -> Result<Value, Interrupt<RuntimeError>> {
+        match &*callee.borrow() {
+            Callable::Function(f) => {
+                // arity check
+                self.check_arity(f.arity(), args.len(), token)?;
+
+                // build a new environment whose parent is the function's closure
+                let current_env = self.environment.clone();
+                let mut new_env = Environment::new(Some(self.environment.clone()));
+
+                // bind each param to each arg
+                for (param, arg) in f.params.iter().zip(args) {
+                    new_env.define(param, arg);
+                }
+
+                let env_cell = Rc::new(RefCell::new(new_env));
+
+                // evaluate_block(&f.body, that_env)
+                let result = self.evaluate_block(&f.body, Some(env_cell.clone()));
+
+                // revert environment
+                let _ = std::mem::replace(&mut self.environment, current_env);
+
+                // catch a Return value
+                match result {
+                    Some(Ok(val)) => Ok(val),
+                    Some(Err(Interrupt::Error(e))) => Err(e.wrap()),
+                    Some(Err(Interrupt::Return { value })) => Ok(value),
+                    None => Ok(Value::Literal(Literal::Nil)),
+                }
+            }
+            Callable::Native(f) => {
+                if args.len() != f.arity {
+                    return Err(self
+                        .runtime_error(token, "Incorrect arity to native function")
+                        .wrap());
+                }
+                (f.func)(self, args)
+            }
+            Callable::Class(c) => todo!(),
+        }
+    }
+
+    pub fn check_arity(&self, arity: usize, len: usize, token: &Token) -> Result<(), Interrupt<RuntimeError>> {
+        if arity != len {
+            let msg = if len > arity {
+                "Too many arguments to function."
+            } else {
+                "Too few arguments to function."
+            };
+            Err(self.runtime_error(token, msg).wrap())
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn evaluate_expression(&mut self, expr: &Expr) -> Result<Value, Interrupt<RuntimeError>> {
         match expr {
             Expr::Literal(l) => Ok(l.clone()),
             Expr::Grouping(g) => self.evaluate_expression(&g.expression),
