@@ -3,6 +3,7 @@ use std::env;
 
 mod environment;
 mod expression;
+mod globals;
 mod interpreter;
 mod parser;
 mod runtime;
