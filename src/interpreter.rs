@@ -61,7 +61,7 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
+    pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), Interrupt<RuntimeError>> {
         for stmt in statements {
             match self.evaluate(&stmt) {
                 Some(r) => match r {
@@ -264,13 +264,23 @@ impl Interpreter {
 
     pub fn evaluate_expression(&mut self, expr: &Expr) -> Result<Value, Interrupt<RuntimeError>> {
         match expr {
-            Expr::Literal(l) => Ok(l.clone()),
+            Expr::Literal(l) => Ok(Value::Literal(l.clone())),
             Expr::Grouping(g) => self.evaluate_expression(&g.expression),
-            Expr::Variable(v) => Ok(self.environment.get(v)?.clone()),
+            Expr::Variable(v) => Ok(self.environment.borrow().get(v)?.clone()),
             Expr::Assignment(a) => {
                 let val = self.evaluate_expression(&a.value)?;
-                self.environment.assign(&a.name, &val)?;
+                self.environment.borrow_mut().assign(&a.name, &val)?;
                 Ok(val)
+            }
+            Expr::Call(c) => {
+                let Value::Callable(v) = self.evaluate_expression(&c.callee)? else {
+                    panic!("Non-callable passed to Call struct")
+                };
+                let mut args: Vec<Value> = vec![];
+                for arg in c.args.iter() {
+                    args.push(self.evaluate_expression(arg)?);
+                }
+                self.call(v, args, &c.paren)
             }
             Expr::Logical(l) => {
                 let left = self.evaluate_expression(&l.left)?;
@@ -291,23 +301,25 @@ impl Interpreter {
                 match u.operator.token_type {
                     // e.g. (-1)
                     TokenType::Minus => match right {
-                        Literal::Int(int) => Ok(Literal::Int(-1 * int)),
-                        Literal::Float(float) => Ok(Literal::Float(-1.0 * float)),
-                        _ => Err(RuntimeError {
-                            token: u.operator.clone(),
-                            message: "Cannot negate a non-number".to_owned(),
-                        }),
+                        Value::Literal(Literal::Int(int)) => {
+                            Ok(Value::Literal(Literal::Int(-1 * int)))
+                        }
+                        Value::Literal(Literal::Float(float)) => {
+                            Ok(Value::Literal(Literal::Float(-1.0 * float)))
+                        }
+                        _ => Err(self
+                            .runtime_error(&u.operator, "Cannot negate a non-number")
+                            .wrap()),
                     },
                     // e.g. (!false), (-val)
                     TokenType::Bang => match right {
-                        Literal::False => Ok(Literal::True),
-                        Literal::Nil => Ok(Literal::True),
-                        _ => Ok(Literal::False),
+                        Value::Literal(Literal::False) => Ok(Value::Literal(Literal::True)),
+                        Value::Literal(Literal::Nil) => Ok(Value::Literal(Literal::True)),
+                        _ => Ok(Value::Literal(Literal::False)),
                     },
-                    _ => Err(RuntimeError {
-                        token: u.operator.clone(),
-                        message: "Invalid unary operator".to_owned(),
-                    }),
+                    _ => Err(self
+                        .runtime_error(&u.operator, "Invalid unary operator")
+                        .wrap()),
                 }
             }
             Expr::Binary(b) => {
@@ -316,85 +328,163 @@ impl Interpreter {
 
                 match b.operator.token_type {
                     TokenType::Minus => match (left, right) {
-                        (Literal::Float(l), Literal::Float(r)) => Ok(Literal::Float(l - r)),
-                        (Literal::Int(l), Literal::Int(r)) => Ok(Literal::Int(l - r)),
-                        (Literal::Float(l), Literal::Int(r)) => Ok(Literal::Float(l - r as f32)),
-                        (Literal::Int(l), Literal::Float(r)) => Ok(Literal::Float(l as f32 - r)),
-                        _ => Err(self.runtime_error(&b.operator, "Invalid subtraction")),
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Float(l - r)))
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Int(l - r)))
+                        }
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Float(l - r as f32)))
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Float(l as f32 - r)))
+                        }
+                        _ => Err(self
+                            .runtime_error(&b.operator, "Invalid subtraction")
+                            .wrap()),
                     },
                     TokenType::Slash => match (left, right) {
-                        (Literal::Float(l), Literal::Float(r)) => Ok(Literal::Float(l / r)),
-                        (Literal::Int(l), Literal::Int(r)) => Ok(Literal::Int(l / r)),
-                        (Literal::Float(l), Literal::Int(r)) => Ok(Literal::Float(l / r as f32)),
-                        (Literal::Int(l), Literal::Float(r)) => Ok(Literal::Float(l as f32 / r)),
-                        _ => Err(self.runtime_error(&b.operator, "Invalid division")),
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Float(r))) => {
+                            if r == 0.0 {
+                                Err(self
+                                    .runtime_error(&b.operator, "Attempted to divide by zero")
+                                    .wrap())
+                            } else {
+                                Ok(Value::Literal(Literal::Float(l / r)))
+                            }
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Int(r))) => {
+                            if r == 0 {
+                                Err(self
+                                    .runtime_error(&b.operator, "Attempted to divide by zero")
+                                    .wrap())
+                            } else {
+                                Ok(Value::Literal(Literal::Int(l / r)))
+                            }
+                        }
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Int(r))) => {
+                            if r == 0 {
+                                Err(self
+                                    .runtime_error(&b.operator, "Attempted to divide by zero")
+                                    .wrap())
+                            } else {
+                                Ok(Value::Literal(Literal::Float(l / r as f32)))
+                            }
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Float(r))) => {
+                            if r == 0.0 {
+                                Err(self
+                                    .runtime_error(&b.operator, "Attempted to divide by zero")
+                                    .wrap())
+                            } else {
+                                Ok(Value::Literal(Literal::Float(l as f32 / r)))
+                            }
+                        }
+                        _ => Err(self.runtime_error(&b.operator, "Invalid division").wrap()),
                     },
                     TokenType::Star => match (left, right) {
-                        (Literal::Float(l), Literal::Float(r)) => Ok(Literal::Float(l * r)),
-                        (Literal::Int(l), Literal::Int(r)) => Ok(Literal::Int(l * r)),
-                        (Literal::Float(l), Literal::Int(r)) => Ok(Literal::Float(l * r as f32)),
-                        (Literal::Int(l), Literal::Float(r)) => Ok(Literal::Float(l as f32 * r)),
-                        _ => Err(self.runtime_error(&b.operator, "Invalid multiplication")),
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Float(l * r)))
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Int(l * r)))
+                        }
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Float(l * r as f32)))
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Float(l as f32 * r)))
+                        }
+                        _ => Err(self
+                            .runtime_error(&b.operator, "Invalid multiplication")
+                            .wrap()),
                     },
                     TokenType::Plus => match (left, right) {
-                        (Literal::Float(l), Literal::Float(r)) => Ok(Literal::Float(l + r)),
-                        (Literal::Int(l), Literal::Int(r)) => Ok(Literal::Int(l + r)),
-                        (Literal::Float(l), Literal::Int(r)) => Ok(Literal::Float(l + r as f32)),
-                        (Literal::Int(l), Literal::Float(r)) => Ok(Literal::Float(l as f32 + r)),
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Float(l + r)))
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Int(l + r)))
+                        }
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Float(l + r as f32)))
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Float(l as f32 + r)))
+                        }
                         // string concatenation!
-                        (Literal::String(l), Literal::String(r)) => Ok(Literal::String(l + &r)),
-                        _ => Err(self.runtime_error(&b.operator, "Invalid addition")),
+                        (
+                            Value::Literal(Literal::String(l)),
+                            Value::Literal(Literal::String(r)),
+                        ) => Ok(Value::Literal(Literal::String(l + &r))),
+                        _ => Err(self.runtime_error(&b.operator, "Invalid addition").wrap()),
                     },
                     TokenType::Greater => match (left, right) {
-                        (Literal::Float(l), Literal::Float(r)) => Ok(Literal::Boolean(l > r)),
-                        (Literal::Int(l), Literal::Int(r)) => Ok(Literal::Boolean(l > r)),
-                        (Literal::Float(l), Literal::Int(r)) => {
-                            Ok(Literal::Boolean(l > r as f32))
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l > r)))
                         }
-                        (Literal::Int(l), Literal::Float(r)) => {
-                            Ok(Literal::Boolean(l as f32 > r))
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l > r)))
                         }
-                        _ => Err(self.runtime_error(&b.operator, "Invalid comparison")),
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l > r as f32)))
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l as f32 > r)))
+                        }
+                        _ => Err(self.runtime_error(&b.operator, "Invalid comparison").wrap()),
                     },
                     TokenType::GreaterEqual => match (left, right) {
-                        (Literal::Float(l), Literal::Float(r)) => Ok(Literal::Boolean(l >= r)),
-                        (Literal::Int(l), Literal::Int(r)) => Ok(Literal::Boolean(l >= r)),
-                        (Literal::Float(l), Literal::Int(r)) => {
-                            Ok(Literal::Boolean(l >= r as f32))
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l >= r)))
                         }
-                        (Literal::Int(l), Literal::Float(r)) => {
-                            Ok(Literal::Boolean(l as f32 >= r))
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l >= r)))
                         }
-                        _ => Err(self.runtime_error(&b.operator, "Invalid comparison")),
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l >= r as f32)))
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l as f32 >= r)))
+                        }
+                        _ => Err(self.runtime_error(&b.operator, "Invalid comparison").wrap()),
                     },
                     TokenType::Less => match (left, right) {
-                        (Literal::Float(l), Literal::Float(r)) => Ok(Literal::Boolean(l < r)),
-                        (Literal::Int(l), Literal::Int(r)) => Ok(Literal::Boolean(l < r)),
-                        (Literal::Float(l), Literal::Int(r)) => {
-                            Ok(Literal::Boolean(l < r as f32))
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l < r)))
                         }
-                        (Literal::Int(l), Literal::Float(r)) => {
-                            Ok(Literal::Boolean((l as f32) < r)) // needs parentheses, otherwise '<' is evaluated as a generic of f32
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l < r)))
                         }
-                        _ => Err(self.runtime_error(&b.operator, "Invalid comparison")),
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l < r as f32)))
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Boolean((l as f32) < r))) // needs parentheses, otherwise '<' is evaluated as a generic of f32
+                        }
+                        _ => Err(self.runtime_error(&b.operator, "Invalid comparison").wrap()),
                     },
                     TokenType::LessEqual => match (left, right) {
-                        (Literal::Float(l), Literal::Float(r)) => Ok(Literal::Boolean(l <= r)),
-                        (Literal::Int(l), Literal::Int(r)) => Ok(Literal::Boolean(l <= r)),
-                        (Literal::Float(l), Literal::Int(r)) => {
-                            Ok(Literal::Boolean(l <= r as f32))
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l <= r)))
                         }
-                        (Literal::Int(l), Literal::Float(r)) => {
-                            Ok(Literal::Boolean(l as f32 <= r))
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l <= r)))
                         }
-                        _ => Err(RuntimeError {
-                            token: b.operator.clone(),
-                            message: "Invalid comparison".to_owned(),
-                        }),
+                        (Value::Literal(Literal::Float(l)), Value::Literal(Literal::Int(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l <= r as f32)))
+                        }
+                        (Value::Literal(Literal::Int(l)), Value::Literal(Literal::Float(r))) => {
+                            Ok(Value::Literal(Literal::Boolean(l as f32 <= r)))
+                        }
+                        _ => Err(self.runtime_error(&b.operator, "Invalid comparison").wrap()),
                     },
-                    TokenType::BangEqual => Ok(Literal::Boolean(left != right)),
-                    TokenType::EqualEqual => Ok(Literal::Boolean(left == right)),
-                    _ => Err(self.runtime_error(&b.operator, "Invalid binary operation")),
+                    TokenType::BangEqual => Ok(Value::Literal(Literal::Boolean(left != right))),
+                    TokenType::EqualEqual => Ok(Value::Literal(Literal::Boolean(left == right))),
+                    _ => Err(self
+                        .runtime_error(&b.operator, "Invalid binary operation")
+                        .wrap()),
                 }
             }
         }
