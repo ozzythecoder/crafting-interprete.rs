@@ -1,14 +1,27 @@
-var a = "outside";
-var b = "outside";
-print a;
-print b;
-{
-    var a = "inside";
-    var b = "inside";
-    {
-        var a = "inside even more";
-        print a;
-    }
-    print a;
-    print b;
+fun truthy() {
+    return true;
+}
+
+fun falsy() {
+    return false;
+}
+
+if (truthy()) {
+    print "hooray!";
+}
+
+if (truthy) {
+    print "this also works!";
+}
+
+if (!truthy()) {
+    print "this should never show up!";
+}
+
+if (falsy()) {
+    print "neither should this!";
+}
+
+if (falsy) {
+    print "this will show up, because unevaluated declarations are always truthy";
 }
