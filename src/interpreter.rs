@@ -74,9 +74,62 @@ impl Interpreter {
         Ok(())
     }
 
-    fn evaluate(&mut self, stmt: &Stmt) -> Option<Result<Literal, RuntimeError>> {
+    pub fn evaluate_block(
+        &mut self,
+        block: &[Stmt],
+        environment: Option<Rc<RefCell<Environment>>>,
+    ) -> Option<Result<Value, Interrupt<RuntimeError>>> {
+        // replace previous environment with current
+        let new_env = environment.unwrap_or_else(|| {
+            Rc::new(RefCell::new(Environment::new(Some(Rc::clone(
+                &self.environment,
+            )))))
+        });
+        let prev_env = std::mem::replace(&mut self.environment, new_env);
+
+        let mut return_value = None;
+
+        // evaluate contents of block
+        for stmt in block {
+            match self.evaluate(stmt) {
+                Some(s) => match s {
+                    Err(e) => match e {
+                        Interrupt::Error(err) => {
+                            return Some(Err(err.wrap()));
+                        }
+                        Interrupt::Return { value } => {
+                            return_value = Some(Ok(value));
+                            break;
+                        }
+                    },
+                    Ok(_) => (),
+                },
+                None => (),
+            }
+        }
+
+        self.environment = prev_env;
+
+        return_value
+    }
+
+    fn evaluate(&mut self, stmt: &Stmt) -> Option<Result<Value, Interrupt<RuntimeError>>> {
         match stmt {
             Stmt::Expression(e) => Some(self.evaluate_expression(e)),
+            Stmt::Return { keyword: _, value } => {
+                let val = if let Some(v) = value {
+                    match self.evaluate_expression(v) {
+                        Ok(o) => o,
+                        Err(e) => {
+                            return Some(Err(e));
+                        }
+                    }
+                } else {
+                    Value::Literal(Literal::Nil)
+                };
+
+                Some(Err(Interrupt::Return { value: val }))
+            }
             Stmt::Print(p) => match self.evaluate_expression(p) {
                 Ok(val) => {
                     println!("{}", val.to_string());
@@ -87,34 +140,33 @@ impl Interpreter {
             Stmt::Var { name, initializer } => match initializer {
                 Some(init) => match self.evaluate_expression(init) {
                     Ok(val) => {
-                        self.environment.define(name, val);
+                        self.environment.borrow_mut().define(name, val);
                         None
                     }
                     Err(e) => Some(Err(e)),
                 },
                 None => {
-                    self.environment.define(name, Literal::Nil);
+                    self.environment
+                        .borrow_mut()
+                        .define(name, Value::Literal(Literal::Nil));
                     None
                 }
             },
+            Stmt::Function { name, params, body } => {
+                self.environment.borrow_mut().define(
+                    name,
+                    to_callable_value(Callable::Function(Function {
+                        params: params.clone(),
+                        body: body.clone(),
+                    })),
+                );
+
+                None
+            }
             Stmt::Block(block) => {
-                // create new environment, with current environment as enclosing
-                let prev_env = std::mem::take(&mut self.environment);
-                self.environment = Environment::new(Some(prev_env));
-
-                // evaluate contents of block
-                let result = self.interpret(block);
-
-                // take enclosing environment back from child and reset
-                let child_env = std::mem::take(&mut self.environment);
-                self.environment = *child_env
-                    .enclosing
-                    .expect("Block env cannot be built without a parent");
-
-                match result {
-                    Ok(()) => None,
-                    Err(e) => Some(Err(e)),
-                }
+                // evaluate in a new, enclosed environment
+                let new_env = Environment::new(Some(Rc::clone(&self.environment)));
+                self.evaluate_block(block, Some(Rc::new(RefCell::new(new_env))))
             }
             Stmt::If {
                 condition,
