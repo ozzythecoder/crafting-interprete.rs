@@ -95,7 +95,8 @@ impl Interpreter {
                 Some(s) => match s {
                     Err(e) => match e {
                         Interrupt::Error(err) => {
-                            return Some(Err(err.wrap()));
+                            return_value = Some(Err(err.wrap()));
+                            break;
                         }
                         Interrupt::Return { value } => {
                             return_value = Some(Ok(value));
