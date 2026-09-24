@@ -9,6 +9,7 @@ use std::{
 use crate::{
     interpreter::{Interpreter, RuntimeError},
     parser::Parser,
+    resolver::Resolver,
     scanner::Scanner,
 };
 
@@ -108,8 +109,20 @@ impl Lox {
                 return;
             }
         };
+
         let tokens = Scanner::new(source).scan_tokens();
         let ast = Parser::new(tokens).parse();
+        let mut resolver = Resolver::new(Interpreter::new());
+
+        resolver.resolve(&ast);
+
+        if !resolver.errors.is_empty() {
+            for e in resolver.errors.iter() {
+                println!("Resolver Error: {:?}", e);
+            }
+            return;
+        }
+
         match Interpreter::new().interpret(&ast) {
             Ok(_) => (),
             Err(e) => {
