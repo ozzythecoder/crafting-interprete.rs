@@ -41,11 +41,11 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Result<Stmt, ParseError> {
-        if self.check(TokenType::Fun) {
+        if self.match_expr(&[TokenType::Fun]) {
             self.function_declaration("function")
-        } else if self.check(TokenType::Class) {
+        } else if self.match_expr(&[TokenType::Class]) {
             self.class_declaration()
-        } else if self.check(TokenType::Var) {
+        } else if self.match_expr(&[TokenType::Var]) {
             self.var_declaration()
         } else {
             self.statement()
@@ -66,7 +66,6 @@ impl Parser {
     }
 
     fn function_declaration(&mut self, kind: &str) -> Result<Stmt, ParseError> {
-        self.advance();
         let name = self.consume(
             TokenType::Identifier,
             &(String::from("Expected ") + kind + " name."),
@@ -99,7 +98,6 @@ impl Parser {
     }
 
     fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
-        self.advance(); // consume `var` keyword
         let name = self.consume(TokenType::Identifier, "Expected variable name.")?;
         let initializer = if self.match_expr(&[TokenType::Equal]) {
             Some(self.expression()?)
