@@ -1,5 +1,5 @@
 use crate::{
-    expression::{Assignment, Binary, Call, Expr, Grouping, Literal, Logical, Unary},
+    expression::{Assignment, Binary, Call, Expr, Grouping, Literal, Logical, Unary, Variable},
     statement::Stmt,
     token::{Token, TokenType},
 };
@@ -8,6 +8,7 @@ pub struct Parser {
     tokens: Vec<Token>,
     statements: Vec<Stmt>,
     current: usize,
+    expr_id: usize,
 }
 
 #[derive(Debug)]
@@ -22,6 +23,7 @@ impl Parser {
             tokens,
             statements: vec![],
             current: 0,
+            expr_id: 1,
         }
     }
 
@@ -249,7 +251,8 @@ impl Parser {
 
             match expr {
                 Expr::Variable(v) => Ok(Expr::Assignment(Assignment {
-                    name: v,
+                    id: self.next_expr_id(),
+                    name: v.name,
                     value: Box::new(value),
                 })),
                 _ => Err(ParseError {
@@ -431,7 +434,10 @@ impl Parser {
             }))
         } else if self.match_expr(&[TokenType::Identifier]) {
             // TODO: restrict keywords as idnetifiers - or maybe this will happen naturally when we implement the keywords?
-            Ok(Expr::Variable(self.previous()))
+            Ok(Expr::Variable(Variable {
+                id: self.next_expr_id(),
+                name: self.previous(),
+            }))
         } else {
             // Exhausted all options for valid syntax - report an error
             let message = String::from("Expression expected.");
@@ -510,6 +516,12 @@ impl Parser {
             println!("Warning: Parser checked `self.previous()` from index 0");
             self.tokens[0].clone()
         }
+    }
+
+    fn next_expr_id(&mut self) -> usize {
+        let id = self.expr_id;
+        self.expr_id += 1;
+        id
     }
 }
 
