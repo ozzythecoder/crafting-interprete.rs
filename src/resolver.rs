@@ -5,25 +5,34 @@ use crate::{expression::Expr, interpreter::Interpreter, statement::Stmt, token::
 pub struct Resolver {
     interpreter: Interpreter,
     scopes: Rc<RefCell<Vec<HashMap<String, bool>>>>,
-    errors: Vec<ResolverError>,
+    pub errors: Vec<ResolverError>,
+    current_function: FuncType,
 }
 
 #[derive(Debug)]
-struct ResolverError {
+pub struct ResolverError {
     token: Token,
     msg: String,
 }
 
+#[derive(Default, Debug, Copy, Clone, PartialEq, PartialOrd)]
+enum FuncType {
+    Function,
+    #[default]
+    None,
+}
+
 impl Resolver {
-    fn new(interpreter: Interpreter) -> Resolver {
+    pub fn new(interpreter: Interpreter) -> Resolver {
         Resolver {
             interpreter,
             scopes: Rc::new(RefCell::new(vec![])),
             errors: vec![],
+            current_function: FuncType::None,
         }
     }
 
-    fn resolve_block(&mut self, block: Vec<Stmt>) {
+    pub fn resolve(&mut self, block: &Vec<Stmt>) {
         self.begin_scope();
         for stmt in block {
             self.resolve_stmt(stmt);
@@ -31,7 +40,7 @@ impl Resolver {
         self.end_scope();
     }
 
-    fn resolve_stmt(&mut self, stmt: Stmt) {
+    fn resolve_stmt(&mut self, stmt: &Stmt) {
         match stmt {
             Stmt::Var { name, initializer } => {
                 self.declare(&name);
@@ -44,19 +53,21 @@ impl Resolver {
                 self.declare(&name);
                 self.define(&name);
 
-                self.resolve_function(params, body);
+                self.resolve_function(params, body, FuncType::Function);
             }
             Stmt::Expression(e) | Stmt::Print(e) => {
                 self.resolve_expr(&e);
             }
-            Stmt::Return { keyword: _, value } => {
-                if let Some(val) = value {
+            Stmt::Return { keyword, value } => {
+                if self.current_function == FuncType::None {
+                    self.push_resolver_error(&keyword, "Can't return from top-level code.");
+                } else if let Some(val) = value {
                     self.resolve_expr(&val);
                 }
             }
             Stmt::While { condition, body } => {
                 self.resolve_expr(&condition);
-                self.resolve_stmt(*body);
+                self.resolve_stmt(&*body);
             }
             Stmt::If {
                 condition,
@@ -64,21 +75,30 @@ impl Resolver {
                 else_branch,
             } => {
                 self.resolve_expr(&condition);
-                self.resolve_stmt(*then_branch);
+                self.resolve_stmt(&*then_branch);
                 if let Some(el) = else_branch {
-                    self.resolve_stmt(*el);
+                    self.resolve_stmt(&*el);
                 }
             }
             Stmt::Block(b) => {
-                self.resolve_block(b);
+                self.resolve(b);
             }
         }
     }
 
-    fn declare(&self, name: &Token) {
+    fn declare(&mut self, name: &Token) {
+        let mut err = None;
+        dbg!("declare", name);
         if let Some(scope) = self.scopes.borrow_mut().last_mut() {
-            scope.insert(name.lexeme.to_string(), false);
+            if scope.contains_key(&name.lexeme.to_string()) {
+                err = Some(self.resolver_error(name, "A variable with this name already exists."));
+            } else {
+                scope.insert(name.lexeme.to_string(), false);
+            }
         };
+        if err.is_some() {
+            self.push_resolver_error(name, "A variable with this name already exists.");
+        }
     }
 
     fn define(&self, name: &Token) {
@@ -91,11 +111,12 @@ impl Resolver {
         match expr {
             Expr::Variable(v) => {
                 let err = if let Some(scope) = self.scopes.borrow_mut().last_mut()
-                    && scope.get(&v.lexeme) == Some(&false)
+                    && scope.get(&v.name.lexeme) == Some(&false)
                 {
-                    Some(
-                        self.resolver_error(v, "Can't read local variable in its own initializer."),
-                    )
+                    Some(self.resolver_error(
+                        &v.name,
+                        "Can't read local variable in its own initializer.",
+                    ))
                 } else {
                     None
                 };
@@ -103,7 +124,7 @@ impl Resolver {
                     self.errors.push(e);
                 }
 
-                self.resolve_local(expr.clone(), &v);
+                self.resolve_local(expr.clone(), &v.name);
             }
             Expr::Assignment(a) => {
                 self.resolve_expr(&a.value);
@@ -134,7 +155,8 @@ impl Resolver {
     }
 
     fn resolve_local(&mut self, expr: Expr, name: &Token) {
-        let scopes_iter = self.scopes.borrow().iter().rev(); // reversed to visit innermost scope first
+        let scopes_cell = self.scopes.borrow();
+        let scopes_iter = scopes_cell.iter().rev(); // reversed to visit innermost scope first
         for (idx, scope) in scopes_iter.enumerate() {
             if scope.contains_key(&name.lexeme) {
                 self.interpreter.resolve(expr, idx - 1);
@@ -143,7 +165,9 @@ impl Resolver {
         }
     }
 
-    fn resolve_function(&mut self, params: Vec<Token>, body: Vec<Stmt>) {
+    fn resolve_function(&mut self, params: &Vec<Token>, body: &Vec<Stmt>, function_type: FuncType) {
+        let enclosing = self.current_function;
+        self.current_function = function_type;
         self.begin_scope();
         for token in params {
             self.declare(&token);
@@ -153,11 +177,16 @@ impl Resolver {
             self.resolve_stmt(stmt);
         }
         self.end_scope();
+        self.current_function = enclosing;
     }
 
-    fn begin_scope(&self) {}
+    fn begin_scope(&self) {
+        self.scopes.borrow_mut().push(HashMap::new());
+    }
 
-    fn end_scope(&self) {}
+    fn end_scope(&self) {
+        self.scopes.borrow_mut().pop();
+    }
 
     fn resolver_error(&self, token: &Token, msg: &str) -> ResolverError {
         ResolverError {
