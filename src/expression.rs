@@ -16,7 +16,7 @@ pub enum Expr {
     Logical(Logical),
     Grouping(Grouping),
     Literal(Literal),
-    Variable(Token),
+    Variable(Variable),
     Assignment(Assignment),
     Call(Call),
 }
@@ -59,6 +59,7 @@ pub struct Call {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assignment {
+    pub id: usize,
     pub name: Token,
     pub value: Box<Expr>,
 }
@@ -85,6 +86,12 @@ pub struct Logical {
     pub left: Box<Expr>,
     pub operator: Token,
     pub right: Box<Expr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Variable {
+    pub id: usize,
+    pub name: Token,
 }
 
 /// An arbitrary expression grouping.
