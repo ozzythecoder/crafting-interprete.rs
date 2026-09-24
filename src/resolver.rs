@@ -163,7 +163,7 @@ impl Resolver {
         let scopes_iter = scopes_cell.iter().rev(); // reversed to visit innermost scope first
         for (idx, scope) in scopes_iter.enumerate() {
             if scope.contains_key(&name.lexeme) {
-                self.interpreter.resolve(expr_id, idx - 1);
+                self.interpreter.resolve(expr_id, idx);
                 return;
             }
         }
