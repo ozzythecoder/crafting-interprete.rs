@@ -3,8 +3,8 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use crate::{
     environment::Environment,
     expression::{
-        Assignment, Callable, Expr, Function, IsTruthy, Literal, NativeFunction, TCallable, Value,
-        Variable, to_callable_value,
+        Assignment, Callable, Class, Expr, Function, IsTruthy, Literal, NativeFunction, TCallable,
+        Value, Variable, to_callable_value,
     },
     globals::clock_native,
     statement::Stmt,
@@ -160,6 +160,16 @@ impl Interpreter {
                         body: body.clone(),
                     })),
                 );
+
+                None
+            }
+            Stmt::Class { name, methods: _ } => {
+                self.environment
+                    .borrow_mut()
+                    .define(name, Value::Literal(Literal::Nil));
+
+                let class = to_callable_value(Callable::Class(Class { name: name.lexeme }));
+                self.environment.borrow_mut().assign(name, &class);
 
                 None
             }

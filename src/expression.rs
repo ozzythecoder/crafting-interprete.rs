@@ -1,7 +1,9 @@
 use std::{cell::RefCell, fmt::Display, rc::Rc};
 
 use crate::{
-    interpreter::{Interpreter, Interrupt, RuntimeError}, statement::Stmt, token::Token,
+    interpreter::{Interpreter, Interrupt, RuntimeError},
+    statement::Stmt,
+    token::Token,
 };
 
 pub trait IsTruthy {
@@ -126,7 +128,7 @@ pub struct Function {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Class {
-    pub args: Vec<Value>,
+    pub name: String,
 }
 
 pub trait TCallable {
@@ -136,6 +138,12 @@ pub trait TCallable {
 impl TCallable for Function {
     fn arity(&self) -> usize {
         self.params.len()
+    }
+}
+
+impl Display for Class {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name.to_string())
     }
 }
 
