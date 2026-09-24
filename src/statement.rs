@@ -4,6 +4,10 @@ use crate::{expression::Expr, token::Token};
 pub enum Stmt {
     Expression(Expr),
     Print(Expr),
+    Class {
+        name: Token,
+        methods: Vec<Stmt>,
+    },
     Var {
         name: Token,
         initializer: Option<Expr>,
@@ -26,5 +30,5 @@ pub enum Stmt {
     Return {
         keyword: Token,
         value: Option<Box<Expr>>,
-    }
+    },
 }
