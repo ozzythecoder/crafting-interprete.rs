@@ -167,11 +167,14 @@ impl Interpreter {
                 self.environment
                     .borrow_mut()
                     .define(name, Value::Literal(Literal::Nil));
-
-                let class = to_callable_value(Callable::Class(Class { name: name.lexeme }));
-                self.environment.borrow_mut().assign(name, &class);
-
-                None
+                let class = to_callable_value(Callable::Class(Class {
+                    name: name.lexeme.clone(),
+                }));
+                if let Err(e) = self.environment.borrow_mut().assign(name, &class) {
+                    Some(Err(e))
+                } else {
+                    None
+                }
             }
             Stmt::Block(block) => {
                 // evaluate in a new, enclosed environment
