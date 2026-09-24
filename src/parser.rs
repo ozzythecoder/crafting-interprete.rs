@@ -43,11 +43,26 @@ impl Parser {
     fn declaration(&mut self) -> Result<Stmt, ParseError> {
         if self.check(TokenType::Fun) {
             self.function_declaration("function")
+        } else if self.check(TokenType::Class) {
+            self.class_declaration()
         } else if self.check(TokenType::Var) {
             self.var_declaration()
         } else {
             self.statement()
         }
+    }
+
+    fn class_declaration(&mut self) -> Result<Stmt, ParseError> {
+        let name = self.consume(TokenType::Identifier, "Expected class name.")?;
+        self.consume(TokenType::LeftBrace, "Expected '{' before class body.")?;
+        let mut methods: Vec<Stmt> = vec![];
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            methods.push(self.function_declaration("method")?);
+        }
+
+        self.consume(TokenType::RightBrace, "Expect '}' after class body.")?;
+
+        Ok(Stmt::Class { name, methods })
     }
 
     fn function_declaration(&mut self, kind: &str) -> Result<Stmt, ParseError> {
