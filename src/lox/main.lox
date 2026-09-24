@@ -1,27 +1,2 @@
-fun truthy() {
-    return true;
-}
-
-fun falsy() {
-    return false;
-}
-
-if (truthy()) {
-    print "hooray!";
-}
-
-if (truthy) {
-    print "this also works!";
-}
-
-if (!truthy()) {
-    print "this should never show up!";
-}
-
-if (falsy()) {
-    print "neither should this!";
-}
-
-if (falsy) {
-    print "this will show up, because unevaluated declarations are always truthy";
-}
+var a = "one";
+var a = "two";
