@@ -124,11 +124,11 @@ impl Resolver {
                     self.errors.push(e);
                 }
 
-                self.resolve_local(expr.clone(), &v.name);
+                self.resolve_local(v.id, &v.name);
             }
             Expr::Assignment(a) => {
                 self.resolve_expr(&a.value);
-                self.resolve_local(Expr::Assignment(a.clone()), &a.name);
+                self.resolve_local(a.id, &a.name);
             }
             Expr::Binary(b) => {
                 self.resolve_expr(&b.left);
@@ -154,12 +154,12 @@ impl Resolver {
         }
     }
 
-    fn resolve_local(&mut self, expr: Expr, name: &Token) {
+    fn resolve_local(&mut self, expr_id: usize, name: &Token) {
         let scopes_cell = self.scopes.borrow();
         let scopes_iter = scopes_cell.iter().rev(); // reversed to visit innermost scope first
         for (idx, scope) in scopes_iter.enumerate() {
             if scope.contains_key(&name.lexeme) {
-                self.interpreter.resolve(expr, idx - 1);
+                self.interpreter.resolve(expr_id, idx - 1);
                 return;
             }
         }
