@@ -1,10 +1,10 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
     environment::Environment,
     expression::{
-        Callable, Expr, Function, IsTruthy, Literal, NativeFunction, TCallable, Value,
-        to_callable_value,
+        Assignment, Callable, Expr, Function, IsTruthy, Literal, NativeFunction, TCallable, Value,
+        Variable, to_callable_value,
     },
     globals::clock_native,
     statement::Stmt,
@@ -36,6 +36,8 @@ impl RuntimeError {
 
 pub struct Interpreter {
     pub environment: Rc<RefCell<Environment>>,
+    pub globals: Rc<RefCell<Environment>>,
+    pub locals: Rc<RefCell<HashMap<usize, usize>>>,
 }
 
 impl Interpreter {
@@ -54,7 +56,9 @@ impl Interpreter {
         let global_cell = Rc::new(RefCell::new(globals));
 
         Interpreter {
-            environment: Rc::new(RefCell::new(Environment::new(Some(global_cell)))),
+            environment: Rc::new(RefCell::new(Environment::new(Some(global_cell.clone())))),
+            globals: global_cell,
+            locals: Rc::new(RefCell::new(HashMap::new())),
         }
     }
 
@@ -197,6 +201,38 @@ impl Interpreter {
         }
     }
 
+    fn look_up_variable(&mut self, var: &Variable) -> Result<Value, Interrupt<RuntimeError>> {
+        if let Some(distance) = self.locals.borrow().get(&var.id) {
+            let this_env = self.environment.clone();
+            let env = self.ancestor(*distance, this_env);
+            env.borrow().get(&var.name)
+        } else {
+            self.globals.borrow().get(&var.name)
+        }
+    }
+
+    fn assign_at(&self, distance: usize, var: &Assignment, val: Value) {
+        self.ancestor(distance, self.environment.clone())
+            .borrow_mut()
+            .values
+            .insert(var.name.lexeme.clone(), val);
+    }
+
+    /// Get environment a certain number of generations up from current
+    fn ancestor(&self, distance: usize, env: Rc<RefCell<Environment>>) -> Rc<RefCell<Environment>> {
+        if distance == 0 {
+            env.clone()
+        } else {
+            let enclosing = env
+                .borrow()
+                .enclosing
+                .as_ref()
+                .expect("Enclosing environment must exist")
+                .clone();
+            self.ancestor(distance, enclosing)
+        }
+    }
+
     pub fn call(
         &mut self,
         callee: Rc<RefCell<Callable>>,
@@ -267,10 +303,15 @@ impl Interpreter {
         match expr {
             Expr::Literal(l) => Ok(Value::Literal(l.clone())),
             Expr::Grouping(g) => self.evaluate_expression(&g.expression),
-            Expr::Variable(v) => Ok(self.environment.borrow().get(v)?.clone()),
+            Expr::Variable(v) => self.look_up_variable(v),
             Expr::Assignment(a) => {
                 let val = self.evaluate_expression(&a.value)?;
-                self.environment.borrow_mut().assign(&a.name, &val)?;
+
+                if let Some(distance) = self.locals.borrow().get(&a.id) {
+                    self.assign_at(*distance, a, val.clone());
+                } else {
+                    self.globals.borrow_mut().assign(&a.name, &val)?;
+                }
                 Ok(val)
             }
             Expr::Call(c) => {
@@ -302,11 +343,9 @@ impl Interpreter {
                 match u.operator.token_type {
                     // e.g. (-1)
                     TokenType::Minus => match right {
-                        Value::Literal(Literal::Int(int)) => {
-                            Ok(Value::Literal(Literal::Int(-int)))
-                        }
+                        Value::Literal(Literal::Int(int)) => Ok(Value::Literal(Literal::Int(-int))),
                         Value::Literal(Literal::Float(float)) => {
-                            Ok(Value::Literal(Literal::Float(-1.0 * float)))
+                            Ok(Value::Literal(Literal::Float(-float)))
                         }
                         _ => Err(self
                             .runtime_error(&u.operator, "Cannot negate a non-number")
@@ -508,7 +547,7 @@ pub fn print(expr: &Expr) -> String {
         Expr::Unary(u) => parenthesize(&u.operator.lexeme, &[&u.right]),
         Expr::Grouping(g) => parenthesize("group", &[&g.expression]),
         Expr::Literal(l) => l.to_string(),
-        Expr::Variable(t) => t.lexeme.to_owned(),
+        Expr::Variable(t) => t.name.lexeme.to_owned(),
         Expr::Assignment(a) => String::from(&a.name.lexeme) + " = " + &print(&a.value),
         Expr::Logical(l) => parenthesize(&l.operator.lexeme, &[&l.left, &l.right]),
     }

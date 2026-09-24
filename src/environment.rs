@@ -1,6 +1,10 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::{expression::Value, interpreter::{Interrupt, RuntimeError}, token::Token};
+use crate::{
+    expression::Value,
+    interpreter::{Interrupt, RuntimeError},
+    token::Token,
+};
 
 #[derive(Default)]
 pub struct Environment {
