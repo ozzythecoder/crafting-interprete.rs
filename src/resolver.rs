@@ -55,6 +55,10 @@ impl Resolver {
 
                 self.resolve_function(params, body, FuncType::Function);
             }
+            Stmt::Class { name, methods: _ } => {
+                self.declare(name);
+                self.define(name);
+            }
             Stmt::Expression(e) | Stmt::Print(e) => {
                 self.resolve_expr(&e);
             }
