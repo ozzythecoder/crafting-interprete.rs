@@ -233,6 +233,10 @@ impl Interpreter {
         }
     }
 
+    pub fn resolve(&mut self, expr_id: usize, depth: usize) {
+        self.locals.borrow_mut().insert(expr_id, depth);
+    }
+
     pub fn call(
         &mut self,
         callee: Rc<RefCell<Callable>>,
