@@ -30,6 +30,19 @@ pub enum Value {
     Callable(Rc<RefCell<Callable>>),
 }
 
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Literal(l) => write!(f, "{}", l.to_string()),
+            Self::Callable(c) => match &*c.borrow() {
+                Callable::Function(_) => write!(f, "<function>"),
+                Callable::Native(_) => write!(f, "<native function>"),
+                Callable::Class(c) => write!(f, "{}", c.name),
+            },
+        }
+    }
+}
+
 impl IsTruthy for Value {
     fn is_truthy(&self) -> bool {
         match self {
@@ -39,15 +52,6 @@ impl IsTruthy for Value {
                 Literal::Boolean(b) => *b,
                 _ => true,
             },
-        }
-    }
-}
-
-impl Display for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Callable(_) => write!(f, "<function>"),
-            Self::Literal(l) => write!(f, "{}", l),
         }
     }
 }
