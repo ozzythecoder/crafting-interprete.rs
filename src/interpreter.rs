@@ -164,17 +164,13 @@ impl Interpreter {
                 None
             }
             Stmt::Class { name, methods: _ } => {
-                self.environment
-                    .borrow_mut()
-                    .define(name, Value::Literal(Literal::Nil));
-                let class = to_callable_value(Callable::Class(Class {
-                    name: name.lexeme.clone(),
-                }));
-                if let Err(e) = self.environment.borrow_mut().assign(name, &class) {
-                    Some(Err(e))
-                } else {
-                    None
-                }
+                self.environment.borrow_mut().define(
+                    name,
+                    to_callable_value(Callable::Class(Class {
+                        name: name.lexeme.clone(),
+                    })),
+                );
+                None
             }
             Stmt::Block(block) => {
                 // evaluate in a new, enclosed environment
@@ -224,17 +220,23 @@ impl Interpreter {
         }
     }
 
-    fn assign_at(&self, distance: usize, var: &Assignment, val: Value) {
+    fn assign_at(
+        &self,
+        distance: usize,
+        var: &Assignment,
+        val: Value,
+    ) -> Result<(), Interrupt<RuntimeError>> {
         self.ancestor(distance, self.environment.clone())
             .borrow_mut()
-            .values
-            .insert(var.name.lexeme.clone(), val);
+            .assign(&var.name, &val)?;
+        self.locals.borrow_mut().insert(var.id, distance);
+        Ok(())
     }
 
     /// Get environment a certain number of generations up from current
     fn ancestor(&self, distance: usize, env: Rc<RefCell<Environment>>) -> Rc<RefCell<Environment>> {
         if distance == 0 {
-            env.clone()
+            env
         } else {
             let enclosing = env
                 .borrow()
@@ -325,9 +327,9 @@ impl Interpreter {
                 let val = self.evaluate_expression(&a.value)?;
 
                 if let Some(distance) = self.locals.borrow().get(&a.id) {
-                    self.assign_at(*distance, a, val.clone());
+                    self.assign_at(*distance, a, val.clone())?;
                 } else {
-                    self.globals.borrow_mut().assign(&a.name, &val)?;
+                    self.assign_at(0, a, val.clone())?;
                 }
                 Ok(val)
             }
