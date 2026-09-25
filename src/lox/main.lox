@@ -1,2 +1,7 @@
-var a = "one";
-var a = "two";
+class IceCream {
+    serveWith() {
+        return "pie";
+    }
+}
+
+print IceCream;
