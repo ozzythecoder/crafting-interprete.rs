@@ -123,7 +123,7 @@ impl Lox {
             return;
         }
 
-        match Interpreter::new().interpret(&ast) {
+        match resolver.into_interpreter().interpret(&ast) {
             Ok(_) => (),
             Err(e) => {
                 if let crate::interpreter::Interrupt::Error(e) = e {

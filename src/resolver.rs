@@ -32,6 +32,10 @@ impl Resolver {
         }
     }
 
+    pub fn into_interpreter(self) -> Interpreter {
+        self.interpreter
+    }
+
     pub fn resolve(&mut self, block: &Vec<Stmt>) {
         self.begin_scope();
         for stmt in block {
@@ -92,7 +96,6 @@ impl Resolver {
 
     fn declare(&mut self, name: &Token) {
         let mut err = None;
-        dbg!("declare", name);
         if let Some(scope) = self.scopes.borrow_mut().last_mut() {
             if scope.contains_key(&name.lexeme.to_string()) {
                 err = Some(self.resolver_error(name, "A variable with this name already exists."));
