@@ -553,9 +553,9 @@ impl Interpreter {
                         .wrap()),
                 }
             }
-            Expr::Get { expr, name } => {
-                if let Value::ClassInstance(c) = self.evaluate_expression(expr)? {
-                    if let Some(val) = c.class.get(name) {
+            Expr::Get { object, name } => {
+                if let Value::ClassInstance(c) = self.evaluate_expression(object)? {
+                    if let Some(val) = c.get(name) {
                         Ok(val)
                     } else {
                         let msg = format!("No property {} on class {}.", name.lexeme, c.class.name);
@@ -566,6 +566,23 @@ impl Interpreter {
                         .runtime_error(name, "Only instances have properties.")
                         .wrap())
                 }
+            }
+            Expr::Set {
+                object,
+                name,
+                value,
+            } => {
+                let mut obj = match self.evaluate_expression(object)? {
+                    Value::ClassInstance(cl) => cl,
+                    _ => {
+                        return Err(self
+                            .runtime_error(name, "Only instances have fields.")
+                            .wrap());
+                    }
+                };
+                let val = self.evaluate_expression(value)?;
+                obj.set(name, val.clone());
+                Ok(val)
             }
         }
     }
@@ -590,6 +607,12 @@ pub fn print(expr: &Expr) -> String {
         Expr::Variable(t) => t.name.lexeme.to_owned(),
         Expr::Assignment(a) => String::from(&a.name.lexeme) + " = " + &print(&a.value),
         Expr::Logical(l) => parenthesize(&l.operator.lexeme, &[&l.left, &l.right]),
+        Expr::Get { object, name } => todo!(),
+        Expr::Set {
+            object,
+            name,
+            value,
+        } => todo!(),
     }
 }
 
