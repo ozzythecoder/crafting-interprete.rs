@@ -553,6 +553,20 @@ impl Interpreter {
                         .wrap()),
                 }
             }
+            Expr::Get { expr, name } => {
+                if let Value::ClassInstance(c) = self.evaluate_expression(expr)? {
+                    if let Some(val) = c.class.get(name) {
+                        Ok(val)
+                    } else {
+                        let msg = format!("No property {} on class {}.", name.lexeme, c.class.name);
+                        Err(self.runtime_error(name, &msg).wrap())
+                    }
+                } else {
+                    Err(self
+                        .runtime_error(name, "Only instances have properties.")
+                        .wrap())
+                }
+            }
         }
     }
 
