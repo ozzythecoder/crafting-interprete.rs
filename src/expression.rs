@@ -21,7 +21,15 @@ pub enum Expr {
     Variable(Variable),
     Assignment(Assignment),
     Call(Call),
-    Get { expr: Box<Expr>, name: Token },
+    Get {
+        expr: Box<Expr>,
+        name: Token,
+    },
+    Set {
+        object: Box<Expr>,
+        name: Token,
+        value: Box<Expr>,
+    },
 }
 
 /// The result of an evaluated expression. AKA an r-value
