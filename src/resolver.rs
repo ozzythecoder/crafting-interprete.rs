@@ -11,8 +11,8 @@ pub struct Resolver {
 
 #[derive(Debug)]
 pub struct ResolverError {
-    token: Token,
-    msg: String,
+    pub token: Token,
+    pub msg: String,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, PartialOrd)]
