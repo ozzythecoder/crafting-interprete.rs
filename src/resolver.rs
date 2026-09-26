@@ -18,6 +18,7 @@ pub struct ResolverError {
 #[derive(Default, Debug, Copy, Clone, PartialEq, PartialOrd)]
 enum FuncType {
     Function,
+    Method,
     #[default]
     None,
 }
@@ -59,9 +60,14 @@ impl Resolver {
 
                 self.resolve_function(params, body, FuncType::Function);
             }
-            Stmt::Class { name, methods: _ } => {
+            Stmt::Class { name, methods } => {
                 self.declare(name);
                 self.define(name);
+
+                for method in methods {
+                    let declaration = FuncType::Method;
+                    self.resolve_function(&method.params, &method.body, declaration);
+                }
             }
             Stmt::Expression(e) | Stmt::Print(e) => {
                 self.resolve_expr(&e);
