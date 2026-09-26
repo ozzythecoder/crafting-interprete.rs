@@ -6,7 +6,7 @@ pub enum Stmt {
     Print(Expr),
     Class {
         name: Token,
-        methods: Vec<Stmt>,
+        methods: Vec<Function>,
     },
     Var {
         name: Token,
@@ -31,4 +31,11 @@ pub enum Stmt {
         keyword: Token,
         value: Option<Box<Expr>>,
     },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Function {
+    pub name: Token,
+    pub params: Vec<Token>,
+    pub body: Vec<Stmt>,
 }
