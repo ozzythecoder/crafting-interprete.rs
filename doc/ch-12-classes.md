@@ -27,3 +27,6 @@ My hypothesis: add another entry to the enum: `Value::ClassInstance`.
 
 Works! So far. Ran into another issue: shared references in `Interpreter::call()`. To get owned data, I could do `c.clone()`, but then I'd be doubling the amount of memory used for every class. So I think ClassInstance will need to hold an ~~`Rc<RefCell<Class>>`~~ -- actually, I can just use an `Rc<Class>` for this. The `RefCell` is for mutability, but the classes are immutable once defined.
 
+---
+
+Little further down the line. Ran into an issue with methods vs functions in the resolver. The function is a struct member of an enum `Stmt::Class { name, methods }`, rather than a unit struct around a struct like `Stmt::Block(Vec<&Stmt>)`. So rather than passing a single object, I'm passing fields. This was fine for a while, but I realize that this made the `methods` field very generic as `Vec<&Stmt>`. I've created a `Function` struct alongside the `Stmt` enum to encapsulate this a bit more. Will eventually need to turn `Stmt::Function` into a unit struct as well, to keep things consistent.
