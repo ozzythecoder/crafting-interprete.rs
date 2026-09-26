@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fmt::Display, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
 use crate::{
     interpreter::{Interpreter, Interrupt, RuntimeError},
@@ -21,6 +21,7 @@ pub enum Expr {
     Variable(Variable),
     Assignment(Assignment),
     Call(Call),
+    Get { expr: Box<Expr>, name: Token },
 }
 
 /// The result of an evaluated expression. AKA an r-value
@@ -131,6 +132,13 @@ pub struct Function {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Class {
     pub name: String,
+    pub fields: HashMap<String, Value>,
+}
+
+impl Class {
+    pub fn get(&self, token: &Token) -> Option<Value> {
+        self.fields.get(&token.lexeme).cloned()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
