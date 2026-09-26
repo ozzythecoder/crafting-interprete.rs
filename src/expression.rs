@@ -147,6 +147,10 @@ impl Class {
     pub fn get(&self, token: &Token) -> Option<Value> {
         self.fields.get(&token.lexeme).cloned()
     }
+
+    pub fn set(&mut self, token: &Token, value: Value) {
+        self.fields.insert(token.lexeme.clone(), value);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
