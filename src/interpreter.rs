@@ -3,8 +3,8 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use crate::{
     environment::Environment,
     expression::{
-        Assignment, Callable, Class, Expr, Function, IsTruthy, Literal, NativeFunction, TCallable,
-        Value, Variable, to_callable_value,
+        Assignment, Callable, Class, ClassInstance, Expr, Function, IsTruthy, Literal,
+        NativeFunction, TCallable, Value, Variable, to_callable_value,
     },
     globals::clock_native,
     statement::Stmt,
@@ -274,7 +274,7 @@ impl Interpreter {
 
                 let env_cell = Rc::new(RefCell::new(new_env));
 
-                // evaluate_block(&f.body, that_env)
+                // evaluate block
                 let result = self.evaluate_block(&f.body, Some(env_cell.clone()));
 
                 // revert environment
@@ -296,7 +296,14 @@ impl Interpreter {
                 }
                 (f.func)(self, args)
             }
-            Callable::Class(c) => todo!(),
+            Callable::Class(c) => {
+                self.check_arity(c.arity(), args.len(), token)?;
+
+                // todo: args
+                let instance = ClassInstance::new(Rc::new(c.clone()));
+
+                Ok(Value::ClassInstance(instance))
+            }
         }
     }
 
