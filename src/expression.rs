@@ -22,7 +22,7 @@ pub enum Expr {
     Assignment(Assignment),
     Call(Call),
     Get {
-        expr: Box<Expr>,
+        object: Box<Expr>,
         name: Token,
     },
     Set {
