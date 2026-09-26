@@ -158,6 +158,7 @@ impl Resolver {
                 self.resolve_expr(&g.expression);
             }
             Expr::Literal(_) => (),
+            Expr::Get { expr: _, name: _ } => (),
         }
     }
 
