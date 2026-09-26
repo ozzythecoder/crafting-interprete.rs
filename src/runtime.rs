@@ -101,6 +101,7 @@ impl Lox {
     }
 
     fn run(&mut self, bytes: Vec<u8>) {
+        println!("\nLox 0.0.1\n");
         let source = match String::from_utf8(bytes) {
             Ok(src) => src,
             Err(e) => {
@@ -118,7 +119,15 @@ impl Lox {
 
         if !resolver.errors.is_empty() {
             for e in resolver.errors.iter() {
-                println!("Resolver Error: {:?}", e);
+                if e.token.line.is_some() {
+                    println!(
+                        "[{}]: Resolver Error: {:?}",
+                        e.token.line.expect("Line must exist"),
+                        e.msg
+                    );
+                } else {
+                    println!("Resolver Error: {:?}", e.msg);
+                };
             }
             return;
         }
