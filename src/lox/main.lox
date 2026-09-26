@@ -4,4 +4,5 @@ class IceCream {
     }
 }
 
-print IceCream;
+var ic = IceCream();
+print ic;
