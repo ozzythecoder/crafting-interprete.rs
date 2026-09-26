@@ -28,12 +28,14 @@ pub enum Expr {
 pub enum Value {
     Literal(Literal),
     Callable(Rc<RefCell<Callable>>),
+    ClassInstance(ClassInstance),
 }
 
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Literal(l) => write!(f, "{}", l.to_string()),
+            Self::ClassInstance(c) => write!(f, "<instance of class {}>", c.to_string()),
             Self::Callable(c) => match &*c.borrow() {
                 Callable::Function(_) => write!(f, "<function>"),
                 Callable::Native(_) => write!(f, "<native function>"),
@@ -46,12 +48,8 @@ impl Display for Value {
 impl IsTruthy for Value {
     fn is_truthy(&self) -> bool {
         match self {
-            Self::Callable(_) => true,
-            Self::Literal(l) => match l {
-                Literal::False | Literal::Nil => false,
-                Literal::Boolean(b) => *b,
-                _ => true,
-            },
+            Self::Callable(_) | Self::ClassInstance(_) => true,
+            Self::Literal(l) => l.is_truthy(),
         }
     }
 }
@@ -135,6 +133,11 @@ pub struct Class {
     pub name: String,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClassInstance {
+    pub class: Rc<Class>,
+}
+
 pub trait TCallable {
     fn arity(&self) -> usize;
 }
@@ -145,9 +148,27 @@ impl TCallable for Function {
     }
 }
 
+impl TCallable for Class {
+    fn arity(&self) -> usize {
+        0
+    }
+}
+
 impl Display for Class {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name.to_string())
+    }
+}
+
+impl ClassInstance {
+    pub fn new(class: Rc<Class>) -> Self {
+        ClassInstance { class }
+    }
+}
+
+impl Display for ClassInstance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.class.name)
     }
 }
 
