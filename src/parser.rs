@@ -268,6 +268,11 @@ impl Parser {
                     name: v.name,
                     value: Box::new(value),
                 })),
+                Expr::Get { object, name } => Ok(Expr::Set {
+                    object,
+                    name,
+                    value: Box::new(value),
+                }),
                 _ => Err(ParseError {
                     token: equals,
                     message: String::from("Invalid assignment target"),
@@ -399,7 +404,7 @@ impl Parser {
             } else if self.match_expr(&[TokenType::Dot]) {
                 let name = self.consume(TokenType::Identifier, "Expect identifier after '.'.")?;
                 expr = Expr::Get {
-                    expr: Box::new(expr),
+                    object: Box::new(expr),
                     name,
                 }
             } else {
