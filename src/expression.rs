@@ -140,10 +140,15 @@ pub struct Function {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Class {
     pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClassInstance {
+    pub class: Rc<Class>,
     pub fields: HashMap<String, Value>,
 }
 
-impl Class {
+impl ClassInstance {
     pub fn get(&self, token: &Token) -> Option<Value> {
         self.fields.get(&token.lexeme).cloned()
     }
@@ -151,11 +156,6 @@ impl Class {
     pub fn set(&mut self, token: &Token, value: Value) {
         self.fields.insert(token.lexeme.clone(), value);
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ClassInstance {
-    pub class: Rc<Class>,
 }
 
 pub trait TCallable {
@@ -182,7 +182,10 @@ impl Display for Class {
 
 impl ClassInstance {
     pub fn new(class: Rc<Class>) -> Self {
-        ClassInstance { class }
+        ClassInstance {
+            class,
+            fields: HashMap::new(),
+        }
     }
 }
 
